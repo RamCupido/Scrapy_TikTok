@@ -1,0 +1,19 @@
+# Entornos virtuales
+venv/
+.venv/
+env/
+
+# Cache de Python y compilados
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Variables de entorno locales
+.env
+
+# Salidas generadas por las pruebas del scraper
+output/
+salida/
+*.json
+*.csv
