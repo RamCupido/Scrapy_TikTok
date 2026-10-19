@@ -11,7 +11,6 @@ Herramienta de línea de comandos desarrollada en Python para la extracción de 
   2. **Capa Secundaria (DOM Fallback):** Lectura de selectores de prueba `data-e2e` y normalización matemática de abreviaciones (`K`, `M`, `B`).
 - Obtención de: `username`, `nombre visible`, `biografía`, `seguidores`, `seguidos`, `likes totales acumulados`, `total de publicaciones` y `visualizaciones` de los videos cargados en la vista inicial.
 - Detección de perfiles privados, perfiles inexistentes y controles de acceso (CAPTCHAs).
-- Exportación opcional de los resultados a formatos **JSON** y **CSV**.
 
 ## 2. Tecnologías Utilizadas
 - **Python 3.10+**
@@ -67,9 +66,9 @@ python main.py
 ```
 El programa solicitará que ingreses el nombre de usuario manualmente.
 
-### C. Ejecución por parámetros CLI y exportación a JSON/CSV
+### C. Ejecución por parámetros CLI
 ```bash
-python main.py -u @tiktok --json output/tiktok_profile.json --csv output/tiktok_summary.csv
+python main.py -u @tiktok
 ```
 
 ### D. Ejecución con navegador visible (modo depuración académica)
@@ -94,14 +93,7 @@ python main.py -u @khaby.lame --headed
   Likes acumulados    : 365,100,000
   Publicaciones (tot) : 1,120
 -----------------------------------------------------------------
- PUBLICACIONES RECIENTES DETECTADAS EN VISTA INICIAL (6):
-  01. ID: 7419001234567890123 | Vistas: 2,400,000 | Likes: No disponible | Comentarios: No disponible | Compartidos: No disponible
-  02. ID: 7418559876543210987 | Vistas: 1,100,000 | Likes: No disponible | Comentarios: No disponible | Compartidos: No disponible
------------------------------------------------------------------
  NOTAS TÉCNICAS DE LA EXTRACCIÓN:
   * Las métricas individuales de likes, comentarios y compartidos por video no están expuestas en la cuadrícula pública sin sesión; se extrajeron las visualizaciones del DOM.
------------------------------------------------------------------
-  Método utilizado    : SSR_JSON_REHYDRATION
-  Fecha UTC           : 2026-10-19T01:42:00+00:00
 =================================================================
 ```

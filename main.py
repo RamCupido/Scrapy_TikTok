@@ -5,7 +5,6 @@ import argparse
 import sys
 from typing import Any
 from src.scraper import TikTokProfileScraper
-from src.exporter import export_to_json, export_to_csv
 from src.models import TikTokProfile
 from src.exceptions import TikTokScraperError
 
@@ -55,18 +54,6 @@ def build_arg_parser() -> argparse.ArgumentParser:
         help="Nombre de usuario de TikTok (ej. tiktok o @tiktok). Si se omite, se solicitará por consola.",
     )
     parser.add_argument(
-        "--json",
-        type=str,
-        metavar="RUTA_ARCHIVO",
-        help="Ruta opcional para exportar el resultado en formato JSON (ej. salida/perfil.json).",
-    )
-    parser.add_argument(
-        "--csv",
-        type=str,
-        metavar="RUTA_ARCHIVO",
-        help="Ruta opcional para exportar el resumen en formato CSV (ej. salida/perfil.csv).",
-    )
-    parser.add_argument(
         "--headed",
         action="store_true",
         help="Ejecuta el navegador con ventana visible en lugar de modo headless.",
@@ -90,14 +77,6 @@ def main() -> int:
     try:
         profile = scraper.fetch_profile(raw_username)
         print_profile_report(profile)
-
-        if args.json:
-            json_path = export_to_json(profile, args.json)
-            print(f"[+] Datos exportados correctamente a JSON: {json_path}")
-
-        if args.csv:
-            csv_path = export_to_csv(profile, args.csv)
-            print(f"[+] Resumen exportado correctamente a CSV: {csv_path}")
 
         return 0
 
