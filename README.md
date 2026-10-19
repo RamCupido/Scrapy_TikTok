@@ -10,7 +10,7 @@ Herramienta de línea de comandos desarrollada en Python para la extracción de 
   1. **Capa Primaria (SSR JSON Rehydration):** Lectura del árbol de estado `__UNIVERSAL_DATA_FOR_REHYDRATION__` para obtener cifras exactas sin redondeos.
   2. **Capa Secundaria (DOM Fallback):** Lectura de selectores de prueba `data-e2e` y normalización matemática de abreviaciones (`K`, `M`, `B`).
 - Obtención de: `username`, `nombre visible`, `biografía`, `seguidores`, `seguidos`, `likes totales acumulados`, `total de publicaciones` y `visualizaciones` de los videos cargados en la vista inicial.
-- Detección respetuosa de perfiles privados, perfiles inexistentes y controles de acceso (CAPTCHAs).
+- Detección de perfiles privados, perfiles inexistentes y controles de acceso (CAPTCHAs).
 - Exportación opcional de los resultados a formatos **JSON** y **CSV**.
 
 ## 2. Tecnologías Utilizadas
@@ -27,8 +27,8 @@ Herramienta de línea de comandos desarrollada en Python para la extracción de 
 
 1. **Clonar el repositorio:**
    ```bash
-   git clone [https://github.com/tu-usuario/tiktok-profile-scraper.git](https://github.com/tu-usuario/tiktok-profile-scraper.git)
-   cd tiktok-profile-scraper
+   git clone [https://github.com/RamCupido/Scrapy_TikTok.git]
+   cd Scrapy_TikTok
    ```
 
 2. **Crear y activar un entorno virtual:**
@@ -105,13 +105,3 @@ python main.py -u @khaby.lame --headed
   Fecha UTC           : 2026-10-19T01:42:00+00:00
 =================================================================
 ```
-
-## 7. Limitaciones Conocidas
-1. **Métricas granulares por video sin sesión:** En la página pública de un perfil (`/@username`), TikTok solo renderiza el conteo de **visualizaciones** sobre las miniaturas de los videos. Los conteos de *likes*, *comentarios* y *compartidos* de cada publicación individual solo se obtienen si TikTok incluye el diccionario `ItemModule` en la hidratación inicial; cuando la plataforma lo omite para usuarios no autenticados, el programa los reporta limpiamente como `No disponible`.
-2. **Paginación (Scroll infinito):** Sin una sesión autenticada, el desplazamiento hacia abajo para cargar cientos de videos adicionales es bloqueado por un muro de inicio de sesión (*Login Wall*). El programa se limita a la carga inicial pública.
-3. **Controles de acceso (CAPTCHA):** Si se realizan múltiples consultas en un corto periodo desde la misma dirección IP, TikTok puede desplegar un reto CAPTCHA.
-
-## 8. Consideraciones de Seguridad y Uso Responsable
-- **Sin evasión de protecciones:** Este software **no** implementa ni promueve técnicas para vulnerar CAPTCHAs, falsificar firmas criptográficas (`X-Bogus` / `_signature`) ni eludir muros de autenticación. Si la plataforma solicita verificación, la aplicación detiene su ejecución de forma controlada.
-- **Privacidad y credenciales:** El proyecto opera exclusivamente sobre datos públicos sin utilizar cuentas, cookies de sesión ni tokens privados.
-- **Propósito educativo:** Desarrollado con fines de investigación académica sobre arquitecturas web modernas, renderizado híbrido y calidad de software en Python.
