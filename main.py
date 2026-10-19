@@ -35,20 +35,6 @@ def print_profile_report(profile: TikTokProfile) -> None:
     print(f"  Seguidos            : {format_value(profile.following_count)}")
     print(f"  Likes acumulados    : {format_value(profile.total_likes_count)}")
     print(f"  Publicaciones (tot) : {format_value(profile.videos_count)}")
-    print("-" * 65)
-    print(f" PUBLICACIONES RECIENTES DETECTADAS EN VISTA INICIAL ({len(profile.recent_videos)}):")
-    
-    if not profile.recent_videos:
-        print("  [!] No se obtuvieron métricas de publicaciones individuales en esta sesión.")
-    else:
-        for idx, vid in enumerate(profile.recent_videos[:10], start=1):
-            print(
-                f"  {idx:02d}. ID: {vid.video_id or 'N/A'} | "
-                f"Vistas: {format_value(vid.views)} | "
-                f"Likes: {format_value(vid.likes)} | "
-                f"Comentarios: {format_value(vid.comments)} | "
-                f"Compartidos: {format_value(vid.shares)}"
-            )
 
     if profile.notes:
         print("-" * 65)
@@ -57,8 +43,6 @@ def print_profile_report(profile: TikTokProfile) -> None:
             print(f"  * {note}")
 
     print("-" * 65)
-    print(f"  Método utilizado    : {profile.extraction_method}")
-    print(f"  Fecha UTC           : {profile.extracted_at}")
     print(f"{separator}\n")
 
 def build_arg_parser() -> argparse.ArgumentParser:
