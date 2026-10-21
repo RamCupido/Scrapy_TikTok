@@ -1,101 +1,142 @@
 # TikTok Public Profile Scraper
 
-Herramienta de línea de comandos desarrollada en Python para la extracción de métricas públicas de perfiles de TikTok mediante automatización de navegador (`Playwright`) y análisis del DOM/SSR (`BeautifulSoup4`), sin usar APIs oficiales ni servicios de terceros.
+Aplicación de línea de comandos escrita en Python para recopilar información visible de perfiles públicos de TikTok. Usa Playwright para abrir la página y Beautiful Soup para analizar el HTML y los datos de hidratación que TikTok incluye en la página.
 
-## 1. Funcionalidades
+La herramienta no necesita credenciales de TikTok. La cantidad de datos disponible depende de lo que TikTok muestre sin iniciar sesión y puede cambiar si la plataforma modifica su sitio o limita el acceso.
 
-**Funcionalidades principales:**
-- Validación sintáctica previa del `username` según las reglas de TikTok.
-- Extracción de **Doble Capa**:
-  1. **Capa Primaria (SSR JSON Rehydration):** Lectura del árbol de estado `__UNIVERSAL_DATA_FOR_REHYDRATION__` para obtener cifras exactas sin redondeos.
-  2. **Capa Secundaria (DOM Fallback):** Lectura de selectores de prueba `data-e2e` y normalización matemática de abreviaciones (`K`, `M`, `B`).
-- Obtención de: `username`, `nombre visible`, `biografía`, `seguidores`, `seguidos`, `likes totales acumulados`, `total de publicaciones` y `visualizaciones` de los videos cargados en la vista inicial.
-- Detección de perfiles privados, perfiles inexistentes y controles de acceso (CAPTCHAs).
-- Guardado automático de cada extracción exitosa en `scraped_profiles.json`, junto a `main.py`, conservando los registros anteriores.
+## Información que puede recopilar
 
-## 2. Tecnologías Utilizadas
-- **Python 3.10+**
-- **Playwright:** Automatización del motor Chromium para permitir el renderizado inicial e hidratación del cliente.
-- **BeautifulSoup4:** Análisis estático del árbol HTML capturado.
-- Librería estándar de Python (`dataclasses`, `argparse`, `json`, `csv`, `re`).
+Del perfil:
 
-## 3. Requisitos Previos
-- Python 3.10 o superior instalado.
-- Conexión a internet para descargar los binarios del navegador Chromium de Playwright y consultar los perfiles públicos.
+- Nombre de usuario y nombre visible.
+- Biografía.
+- Indicadores de cuenta verificada y privada, cuando estén disponibles.
+- Seguidores, seguidos, likes acumulados y cantidad de publicaciones, cuando estén disponibles.
 
-## 4. Instalación Paso a Paso
+De las publicaciones que se carguen en la página:
 
-1. **Clonar el repositorio:**
+- ID, URL, descripción y fecha.
+- Visualizaciones, likes, comentarios, compartidos y guardados, según los datos que TikTok permita obtener.
+
+El programa intenta extraer los datos desde el JSON de la página y usa el DOM como alternativa. Si no consigue las métricas completas de las publicaciones, puede visitar algunas publicaciones para intentar completar los datos. Por eso, los campos individuales pueden aparecer vacíos y los resultados no necesariamente incluirán todas las publicaciones del perfil.
+
+## Requisitos
+
+- Python 3.10 o superior.
+- Conexión a Internet.
+- Chromium, instalado mediante Playwright.
+
+## Instalación
+
+1. Clona el repositorio y entra en la carpeta:
+
    ```bash
-   git clone [https://github.com/RamCupido/Scrapy_TikTok.git]
+   git clone https://github.com/RamCupido/Scrapy_TikTok.git
    cd Scrapy_TikTok
    ```
 
-2. **Crear y activar un entorno virtual:**
-   - En Windows:
-     ```bash
-     python -m venv .venv
-     .venv\Scripts\activate
-     ```
-   - En Linux / macOS:
-     ```bash
-     python3 -m venv .venv
-     source .venv/bin/activate
-     ```
+2. Crea y activa un entorno virtual.
 
-3. **Instalar las dependencias de Python:**
-   ```bash
-   pip install -r requirements.txt
+   **Windows (PowerShell):**
+
+   ```powershell
+   python -m venv .venv
+   .\.venv\Scripts\Activate.ps1
    ```
 
-4. **Instalar el navegador Chromium para Playwright:**
-   ```bash
-   playwright install chromium
+   **Windows (Símbolo del sistema):**
+
+   ```bat
+   python -m venv .venv
+   .venv\Scripts\activate.bat
    ```
 
-## 5. Ejemplos de Uso
+   **Linux o macOS:**
 
-### A. Ejecutar la Prueba de Concepto (Fase de viabilidad)
-Para verificar que el entorno puede leer tanto el JSON de rehidratación como los nodos `data-e2e`:
+   ```bash
+   python3 -m venv .venv
+   source .venv/bin/activate
+   ```
+
+3. Instala las dependencias y el navegador Chromium:
+
+   ```bash
+   python -m pip install -r requirements.txt
+   python -m playwright install chromium
+   ```
+
+## Uso
+
+Desde la carpeta del proyecto, ejecuta el comando principal:
+
 ```bash
-python poc_viability.py
+python main.py -u khaby.lame --headed
 ```
 
-### B. Ejecución interactiva por consola
+`-u` (o `--username`) indica el usuario de TikTok. `--headed` abre Chromium en una ventana visible. También puedes escribir el nombre con `@`:
+
+```bash
+python main.py --username @khaby.lame --headed
+```
+
+Si omites el usuario, el programa lo solicitará en la consola:
+
 ```bash
 python main.py
 ```
-El programa solicitará que ingreses el nombre de usuario manualmente.
 
-### C. Ejecución por parámetros CLI
-```bash
-python main.py -u @tiktok
-```
-Cada extracción exitosa se agrega automáticamente a `scraped_profiles.json`; no hace falta indicar una opción de exportación.
+Sin `--headed`, Playwright intenta usar el navegador en modo oculto (headless):
 
-### D. Ejecución con navegador visible (modo depuración académica)
 ```bash
-python main.py -u @khaby.lame --headed
+python main.py -u khaby.lame
 ```
 
-## 6. Ejemplo de Salida en Consola
+Para ver las opciones de línea de comandos:
+
+```bash
+python main.py --help
+```
+
+## Archivos generados
+
+- **`scraped_profiles.json`**: el programa agrega cada extracción exitosa a una lista JSON, sin reemplazar los registros anteriores. Incluye los datos del perfil, las publicaciones obtenidas, el método de extracción, notas y la fecha de extracción. Si el archivo existente no contiene una lista JSON válida, la escritura mostrará un error.
+- **`session_state.json`**: Playwright carga el estado de navegación guardado si el archivo existe y lo actualiza después de la extracción. No es necesario crearlo manualmente.
+
+Ambos archivos son datos locales generados durante el uso; no se incluyen en el repositorio.
+
+## Configuración opcional
+
+`src/config.py` permite ajustar estos valores mediante variables de entorno:
+
+| Variable | Valor predeterminado | Descripción |
+| --- | --- | --- |
+| `SCRAPER_HEADLESS` | `true` | Modo headless predeterminado. El argumento `--headed` lo desactiva para esa ejecución. |
+| `SCRAPER_TIMEOUT_MS` | `25000` | Tiempo máximo de navegación, en milisegundos. |
+| `SCRAPER_RENDER_WAIT_MS` | `3500` | Espera adicional para que cargue la página cuando no aparece la cuadrícula de publicaciones. |
+| `SCRAPER_USER_AGENT` | Agente de usuario definido en `src/config.py` | Agente de usuario enviado por el navegador. |
+
+El archivo `.env.example` muestra los valores de referencia, pero la aplicación no carga archivos `.env` automáticamente; configura las variables en el entorno antes de ejecutar el programa.
+
+## Errores y limitaciones
+
+- El nombre de usuario se valida antes de navegar: debe tener entre 2 y 24 caracteres y contener solo letras, números, puntos o guiones bajos; no puede terminar en punto. Se acepta un `@` inicial.
+- Los perfiles privados no exponen sus publicaciones. Un perfil inexistente, una respuesta de red/navigation fallida o un CAPTCHA puede impedir la extracción.
+- Si TikTok presenta un control de acceso, prueba el comando con `--headed` para poder ver el navegador. Esto no garantiza que el acceso sea permitido.
+- TikTok puede cambiar la estructura de sus páginas, bloquear solicitudes o limitar los datos disponibles; por ello, la extracción puede ser parcial o dejar campos como “No disponible”.
+- Usa la herramienta respetando los términos de TikTok y las leyes aplicables. Está destinada a información visible públicamente y no elude controles de acceso.
+
+## Estructura del proyecto
 
 ```text
-=================================================================
- REPORTE DE PERFIL PÚBLICO DE TIKTOK: @tiktok
-=================================================================
-  Nombre visible      : TikTok
-  Cuenta verificada   : Sí
-  Cuenta privada      : No
-  Biografía           : One TikTok can make a big impact
------------------------------------------------------------------
- MÉTRICAS E INTERACCIONES GENERALES DEL PERFIL:
-  Seguidores          : 82,400,000
-  Seguidos            : 5
-  Likes acumulados    : 365,100,000
-  Publicaciones (tot) : 1,120
------------------------------------------------------------------
- NOTAS TÉCNICAS DE LA EXTRACCIÓN:
-  * Las métricas individuales de likes, comentarios y compartidos por video no están expuestas en la cuadrícula pública sin sesión; se extrajeron las visualizaciones del DOM.
-=================================================================
+.
+├── main.py                 # Interfaz de línea de comandos y escritura del historial
+├── requirements.txt        # Dependencias de Python
+└── src/
+    ├── config.py           # Configuración del navegador y tiempos
+    ├── exceptions.py       # Errores controlados
+    ├── models.py           # Modelos de perfil y publicaciones
+    ├── normalizers.py      # Conversión de métricas
+    ├── parser.py           # Análisis del HTML y JSON de TikTok
+    ├── scraper.py          # Navegación con Playwright
+    └── validators.py       # Validación del nombre de usuario
 ```
