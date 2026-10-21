@@ -125,18 +125,3 @@ El archivo `.env.example` muestra los valores de referencia, pero la aplicación
 - TikTok puede cambiar la estructura de sus páginas, bloquear solicitudes o limitar los datos disponibles; por ello, la extracción puede ser parcial o dejar campos como “No disponible”.
 - Usa la herramienta respetando los términos de TikTok y las leyes aplicables. Está destinada a información visible públicamente y no elude controles de acceso.
 
-## Estructura del proyecto
-
-```text
-.
-├── main.py                 # Interfaz de línea de comandos y escritura del historial
-├── requirements.txt        # Dependencias de Python
-└── src/
-    ├── config.py           # Configuración del navegador y tiempos
-    ├── exceptions.py       # Errores controlados
-    ├── models.py           # Modelos de perfil y publicaciones
-    ├── normalizers.py      # Conversión de métricas
-    ├── parser.py           # Análisis del HTML y JSON de TikTok
-    ├── scraper.py          # Navegación con Playwright
-    └── validators.py       # Validación del nombre de usuario
-```
