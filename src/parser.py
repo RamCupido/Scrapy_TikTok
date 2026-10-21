@@ -1,4 +1,3 @@
-"""Módulo de análisis HTML y procesamiento de respuestas JSON de TikTok."""
 import json
 import re
 from datetime import datetime, timezone

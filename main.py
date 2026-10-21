@@ -1,6 +1,3 @@
-"""
-Punto de entrada principal de la aplicación CLI para extraer datos públicos de TikTok.
-"""
 import argparse
 import json
 import sys
@@ -18,7 +15,6 @@ from src.models import TikTokProfile
 OUTPUT_FILE = Path(__file__).resolve().with_name("scraped_profiles.json")
 
 def format_value(value: Any) -> str:
-    """Formatea valores opcionales para mostrarlos claramente en consola."""
     if value is None:
         return "No disponible"
     if isinstance(value, bool):
@@ -28,7 +24,6 @@ def format_value(value: Any) -> str:
     return str(value)
 
 def print_profile_report(profile: TikTokProfile) -> None:
-    """Imprime en consola un reporte estructurado y legible de los datos obtenidos."""
     separator = "=" * 65
     print(f"\n{separator}")
     print(f" REPORTE DE PERFIL PÚBLICO DE TIKTOK: @{profile.username}")
@@ -58,7 +53,7 @@ def print_profile_report(profile: TikTokProfile) -> None:
                 f"Compartidos: {format_value(vid.shares)}\n"
                 f"      Desc: {short_desc}"
             )
-            
+
     if profile.notes:
         print("-" * 65)
         print(" NOTAS TÉCNICAS DE LA EXTRACCIÓN:")
@@ -69,7 +64,6 @@ def print_profile_report(profile: TikTokProfile) -> None:
     print(f"{separator}\n")
 
 def append_profile_to_json(profile: TikTokProfile, filepath: Path = OUTPUT_FILE) -> Path:
-    """Agrega el perfil extraído al historial JSON sin reemplazar registros anteriores."""
     profiles = []
     if filepath.exists():
         with filepath.open("r", encoding="utf-8") as file:

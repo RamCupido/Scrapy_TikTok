@@ -1,11 +1,9 @@
-"""Modelos de datos para representar perfiles y métricas de publicaciones."""
 from dataclasses import dataclass, field, asdict
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone
 
 @dataclass
 class VideoMetrics:
-    """Métricas públicas completas asociadas a una publicación individual."""
     video_id: Optional[str] = None
     url: Optional[str] = None
     description: Optional[str] = None
@@ -14,11 +12,10 @@ class VideoMetrics:
     likes: Optional[int] = None
     comments: Optional[int] = None
     shares: Optional[int] = None
-    saves: Optional[int] = None  # Guardados / Favoritos (collectCount)
+    saves: Optional[int] = None
 
 @dataclass
 class TikTokProfile:
-    """Representación estructurada de un perfil público de TikTok."""
     username: str
     display_name: Optional[str] = None
     biography: Optional[str] = None
@@ -36,5 +33,4 @@ class TikTokProfile:
     )
 
     def to_dict(self) -> Dict[str, Any]:
-        """Convierte el modelo completo a un diccionario serializable."""
         return asdict(self)

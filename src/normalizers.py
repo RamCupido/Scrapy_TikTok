@@ -1,4 +1,3 @@
-"""Funciones de normalización para transformar textos de métricas y corregir desbordamientos int32."""
 import re
 from typing import Optional, Union
 
@@ -11,10 +10,6 @@ MULTIPLIERS = {
 UINT32_MODULO = 4_294_967_296  # 2^32
 
 def fix_int32_overflow(value: Optional[Union[int, str]]) -> Optional[int]:
-    """
-    Corrige el bug de desbordamiento de entero de 32 bits (int32 overflow) de TikTok
-    en cuentas que superan los 2,147,483,647 likes (ej. Khaby Lame).
-    """
     if value is None:
         return None
 
@@ -30,10 +25,6 @@ def fix_int32_overflow(value: Optional[Union[int, str]]) -> Optional[int]:
     return num
 
 def parse_metric_string(raw_value: Optional[str]) -> Optional[int]:
-    """
-    Convierte una representación textual de métrica (ej. '1.5M', '12.3K', '845', '1,200')
-    en un número entero. Si el dato no es numérico o no está disponible, retorna None.
-    """
     if raw_value is None:
         return None
 

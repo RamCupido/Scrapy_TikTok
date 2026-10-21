@@ -1,4 +1,3 @@
-"""Configuración global del extractor."""
 import os
 
 DEFAULT_TIMEOUT_MS = int(os.getenv("SCRAPER_TIMEOUT_MS", "25000"))

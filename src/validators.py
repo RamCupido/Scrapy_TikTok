@@ -1,4 +1,3 @@
-"""Validación y sanitización de nombres de usuario de TikTok."""
 import re
 
 class InvalidUsernameError(ValueError):
@@ -9,10 +8,6 @@ class InvalidUsernameError(ValueError):
 USERNAME_REGEX = re.compile(r"^[a-zA-Z0-9_.]{2,24}$")
 
 def validate_and_clean_username(raw_username: str) -> str:
-    """
-    Limpia el símbolo '@' inicial, recorta espacios y valida el formato del username.
-    Lanza InvalidUsernameError si no cumple las reglas de la plataforma.
-    """
     if not raw_username or not isinstance(raw_username, str):
         raise InvalidUsernameError("El nombre de usuario no puede estar vacío.")
 

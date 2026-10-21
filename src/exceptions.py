@@ -1,6 +1,3 @@
-"""Excepciones específicas de la extracción de perfiles de TikTok."""
-
-
 class TikTokScraperError(Exception):
     """Clase base para errores controlados durante la extracción."""
 

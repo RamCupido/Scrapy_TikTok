@@ -1,4 +1,3 @@
-"""Módulo de automatización web con soporte de estado de cookies, anti-webdriver y enriquecimiento de videos."""
 import logging
 from pathlib import Path
 from typing import List, Dict, Any, Optional
