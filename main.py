@@ -2,12 +2,16 @@
 Punto de entrada principal de la aplicación CLI para extraer datos públicos de TikTok.
 """
 import argparse
+import json
 import sys
+from pathlib import Path
 from typing import Any
 from src.scraper import TikTokProfileScraper, NetworkOrNavigationError
 from src.parser import ProfileNotFoundError, AccessControlTriggeredError
 from src.validators import InvalidUsernameError
 from src.models import TikTokProfile
+
+OUTPUT_FILE = Path(__file__).resolve().with_name("scraped_profiles.json")
 
 def format_value(value: Any) -> str:
     """Formatea valores opcionales para mostrarlos claramente en consola."""
@@ -45,6 +49,22 @@ def print_profile_report(profile: TikTokProfile) -> None:
     print("-" * 65)
     print(f"{separator}\n")
 
+def append_profile_to_json(profile: TikTokProfile, filepath: Path = OUTPUT_FILE) -> Path:
+    """Agrega el perfil extraído al historial JSON sin reemplazar registros anteriores."""
+    profiles = []
+    if filepath.exists():
+        with filepath.open("r", encoding="utf-8") as file:
+            profiles = json.load(file)
+        if not isinstance(profiles, list):
+            raise ValueError(f"El archivo JSON existente no contiene una lista: {filepath}")
+
+    profiles.append(profile.to_dict())
+    with filepath.open("w", encoding="utf-8") as file:
+        json.dump(profiles, file, ensure_ascii=False, indent=4)
+        file.write("\n")
+
+    return filepath
+
 def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Extractor ético de información pública de perfiles de TikTok (Sin APIs)."
@@ -78,6 +98,8 @@ def main() -> int:
     try:
         profile = scraper.fetch_profile(raw_username)
         print_profile_report(profile)
+        json_path = append_profile_to_json(profile)
+        print(f"[+] Datos añadidos al historial JSON: {json_path}")
 
         return 0
 

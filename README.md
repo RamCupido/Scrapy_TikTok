@@ -11,6 +11,7 @@ Herramienta de línea de comandos desarrollada en Python para la extracción de 
   2. **Capa Secundaria (DOM Fallback):** Lectura de selectores de prueba `data-e2e` y normalización matemática de abreviaciones (`K`, `M`, `B`).
 - Obtención de: `username`, `nombre visible`, `biografía`, `seguidores`, `seguidos`, `likes totales acumulados`, `total de publicaciones` y `visualizaciones` de los videos cargados en la vista inicial.
 - Detección de perfiles privados, perfiles inexistentes y controles de acceso (CAPTCHAs).
+- Guardado automático de cada extracción exitosa en `scraped_profiles.json`, junto a `main.py`, conservando los registros anteriores.
 
 ## 2. Tecnologías Utilizadas
 - **Python 3.10+**
@@ -70,6 +71,7 @@ El programa solicitará que ingreses el nombre de usuario manualmente.
 ```bash
 python main.py -u @tiktok
 ```
+Cada extracción exitosa se agrega automáticamente a `scraped_profiles.json`; no hace falta indicar una opción de exportación.
 
 ### D. Ejecución con navegador visible (modo depuración académica)
 ```bash
