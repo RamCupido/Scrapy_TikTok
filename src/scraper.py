@@ -17,8 +17,6 @@ from src.exceptions import NetworkOrNavigationError, ProfileNotFoundError
 logger = logging.getLogger(__name__)
 
 class TikTokProfileScraper:
-    """Gestiona la navegación, el estado de cookies de invitado y la captura profunda de videos."""
-
     def __init__(
         self,
         headless: bool = HEADLESS_MODE,
@@ -34,7 +32,6 @@ class TikTokProfileScraper:
         self.max_deep_videos = max_deep_videos
 
     def _dismiss_login_modals(self, page: Page) -> None:
-        """Intenta cerrar modales emergentes de inicio de sesión o modo invitado que frenan la carga."""
         selectors = [
             '[data-e2e="modal-close-inner-button"]',
             'div[role="dialog"] button[aria-label="Close"]',
@@ -50,10 +47,6 @@ class TikTokProfileScraper:
                 pass
 
     def fetch_profile(self, raw_username: str, save_cookies: bool = True) -> TikTokProfile:
-        """
-        Navega al perfil, intercepta respuestas de videos y, si es necesario,
-        enriquece las métricas visitando los primeros videos detectados.
-        """
         username = validate_and_clean_username(raw_username)
         target_url = f"{TIKTOK_BASE_URL}/@{username}"
         intercepted_video_payloads: List[Dict[str, Any]] = []

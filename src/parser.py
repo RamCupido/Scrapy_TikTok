@@ -8,8 +8,6 @@ from src.normalizers import parse_metric_string, fix_int32_overflow
 from src.exceptions import ProfileNotFoundError, AccessControlTriggeredError
 
 class TikTokHTMLParser:
-    """Analiza el HTML del perfil y combina los videos capturados en la red o en el DOM."""
-
     def __init__(
         self,
         html_content: str,
@@ -22,7 +20,6 @@ class TikTokHTMLParser:
         self.intercepted_payloads = intercepted_video_payloads or []
 
     def check_access_restrictions(self) -> None:
-        """Verifica si la página devuelta corresponde a un bloqueo o CAPTCHA activo."""
         title = self.soup.title.string.lower() if self.soup.title and self.soup.title.string else ""
 
         if (
@@ -37,7 +34,6 @@ class TikTokHTMLParser:
             )
 
     def parse(self) -> TikTokProfile:
-        """Combina los datos del perfil con las métricas completas de los videos."""
         self.check_access_restrictions()
 
         profile = self._parse_from_rehydration_json() or self._parse_from_dom()
@@ -61,7 +57,6 @@ class TikTokHTMLParser:
         return profile
 
     def _parse_from_rehydration_json(self) -> Optional[TikTokProfile]:
-        """Extrae datos exactos del perfil desde __UNIVERSAL_DATA_FOR_REHYDRATION__ corrigiendo int32 overflow."""
         script_tag = self.soup.find("script", id="__UNIVERSAL_DATA_FOR_REHYDRATION__")
         if not script_tag or not script_tag.string:
             return None
@@ -113,7 +108,6 @@ class TikTokHTMLParser:
         )
 
     def _parse_intercepted_videos(self, username: str) -> List[VideoMetrics]:
-        """Extrae likes, comentarios, compartidos, guardados y descripción de los paquetes XHR."""
         videos_by_id: Dict[str, VideoMetrics] = {}
 
         for payload in self.intercepted_payloads:
@@ -151,7 +145,6 @@ class TikTokHTMLParser:
         return list(videos_by_id.values())
 
     def _extract_videos_from_dom(self, username: str) -> List[VideoMetrics]:
-        """Busca contenedores de video en el DOM por data-e2e o por patrón de enlaces /video/ID."""
         videos_by_id: Dict[str, VideoMetrics] = {}
 
         # Vía A: Por atributo data-e2e="user-post-item"
@@ -194,10 +187,6 @@ class TikTokHTMLParser:
 
     @staticmethod
     def parse_single_video_html(html_content: str, fallback_video: VideoMetrics) -> VideoMetrics:
-        """
-        Extrae las métricas completas (likes, comentarios, guardados, compartidos, fecha y desc)
-        desde el JSON de hidratación de la página individual de un video.
-        """
         soup = BeautifulSoup(html_content, "html.parser")
         script_tag = soup.find("script", id="__UNIVERSAL_DATA_FOR_REHYDRATION__")
         if not script_tag or not script_tag.string:
@@ -231,7 +220,6 @@ class TikTokHTMLParser:
             return fallback_video
 
     def _parse_from_dom(self) -> Optional[TikTokProfile]:
-        """Respaldo mediante selectores data-e2e del DOM."""
         title_node = self.soup.find(attrs={"data-e2e": "user-title"})
         subtitle_node = self.soup.find(attrs={"data-e2e": "user-subtitle"})
         followers_node = self.soup.find(attrs={"data-e2e": "followers-count"})
