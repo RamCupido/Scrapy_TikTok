@@ -4,8 +4,10 @@ from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeo
 from src.config import DEFAULT_TIMEOUT_MS, RENDER_WAIT_MS, HEADLESS_MODE, DEFAULT_USER_AGENT, TIKTOK_BASE_URL
 from src.models import TikTokProfile
 from src.validators import validate_and_clean_username
-from src.parser import TikTokHTMLParser
-from src.exceptions import NetworkOrNavigationError, ProfileNotFoundError
+from src.parser import TikTokHTMLParser, ProfileNotFoundError
+
+class NetworkOrNavigationError(RuntimeError):
+    """Error de conexión, tiempo de espera agotado o fallo al cargar el navegador."""
 
 logger = logging.getLogger(__name__)
 

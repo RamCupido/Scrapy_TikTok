@@ -1,6 +1,8 @@
 """Validación y sanitización de nombres de usuario de TikTok."""
 import re
-from src.exceptions import InvalidUsernameError
+
+class InvalidUsernameError(ValueError):
+    """El formato del nombre de usuario ingresado no es válido según las reglas de TikTok."""
 
 # Reglas de TikTok: letras, números, guiones bajos y puntos.
 # Longitud entre 2 y 24 caracteres. No puede terminar en punto.

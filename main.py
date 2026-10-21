@@ -4,9 +4,10 @@ Punto de entrada principal de la aplicación CLI para extraer datos públicos de
 import argparse
 import sys
 from typing import Any
-from src.scraper import TikTokProfileScraper
+from src.scraper import TikTokProfileScraper, NetworkOrNavigationError
+from src.parser import ProfileNotFoundError, AccessControlTriggeredError
+from src.validators import InvalidUsernameError
 from src.models import TikTokProfile
-from src.exceptions import TikTokScraperError
 
 def format_value(value: Any) -> str:
     """Formatea valores opcionales para mostrarlos claramente en consola."""
@@ -80,7 +81,12 @@ def main() -> int:
 
         return 0
 
-    except TikTokScraperError as err:
+    except (
+        InvalidUsernameError,
+        ProfileNotFoundError,
+        AccessControlTriggeredError,
+        NetworkOrNavigationError,
+    ) as err:
         print(f"\n[ERROR CONTROLADO] {err}", file=sys.stderr)
         return 2
     except Exception as unexpected_err:

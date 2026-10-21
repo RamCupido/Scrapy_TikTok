@@ -4,7 +4,12 @@ from typing import Optional, List, Dict, Any
 from bs4 import BeautifulSoup
 from src.models import TikTokProfile, VideoMetrics
 from src.normalizers import parse_metric_string
-from src.exceptions import ProfileNotFoundError, AccessControlTriggeredError
+
+class ProfileNotFoundError(RuntimeError):
+    """El perfil solicitado no existe o no está disponible públicamente."""
+
+class AccessControlTriggeredError(RuntimeError):
+    """TikTok activó un control de acceso (CAPTCHA, Login Wall o Rate Limit)."""
 
 class TikTokHTMLParser:
     """Analiza el documento HTML de un perfil de TikTok utilizando BeautifulSoup4."""
