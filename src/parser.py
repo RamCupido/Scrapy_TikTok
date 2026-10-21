@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 from bs4 import BeautifulSoup
 from src.models import TikTokProfile, VideoMetrics
-from src.normalizers import parse_metric_string, fix_int32_overflow
+from src.normalizers import parseMetricString, fixIntOverflow
 from src.exceptions import ProfileNotFoundError, AccessControlTriggeredError
 
 class TikTokHTMLParser:
@@ -19,7 +19,7 @@ class TikTokHTMLParser:
         self.soup = BeautifulSoup(html_content, "html.parser")
         self.intercepted_payloads = intercepted_video_payloads or []
 
-    def check_access_restrictions(self) -> None:
+    def checkAccessRestrictions(self) -> None:
         title = self.soup.title.string.lower() if self.soup.title and self.soup.title.string else ""
 
         if (
@@ -34,16 +34,16 @@ class TikTokHTMLParser:
             )
 
     def parse(self) -> TikTokProfile:
-        self.check_access_restrictions()
+        self.checkAccessRestrictions()
 
-        profile = self._parse_from_rehydration_json() or self._parse_from_dom()
+        profile = self.parse_from_rehydration_json() or self._parse_from_dom()
         if not profile:
             raise ProfileNotFoundError(
                 f"No se encontró información pública para '@{self.requested_username}'."
             )
 
         # 1. Intentar con paquetes JSON interceptados de la red (/api/post/item_list/)
-        xhr_videos = self._parse_intercepted_videos(profile.username)
+        xhr_videos = self.parseInterceptedVideos(profile.username)
         if xhr_videos:
             profile.recent_videos = xhr_videos
             profile.extraction_method += " + XHR_ITEM_LIST"
@@ -56,7 +56,7 @@ class TikTokHTMLParser:
 
         return profile
 
-    def _parse_from_rehydration_json(self) -> Optional[TikTokProfile]:
+    def parse_from_rehydration_json(self) -> Optional[TikTokProfile]:
         script_tag = self.soup.find("script", id="__UNIVERSAL_DATA_FOR_REHYDRATION__")
         if not script_tag or not script_tag.string:
             return None
@@ -96,10 +96,10 @@ class TikTokHTMLParser:
             username=user_data.get("uniqueId", self.requested_username),
             display_name=user_data.get("nickname") or None,
             biography=user_data.get("signature") or None,
-            followers_count=fix_int32_overflow(raw_followers),
-            following_count=fix_int32_overflow(raw_following),
-            total_likes_count=fix_int32_overflow(raw_likes),
-            videos_count=fix_int32_overflow(raw_videos),
+            followers_count=fixIntOverflow(raw_followers),
+            following_count=fixIntOverflow(raw_following),
+            total_likes_count=fixIntOverflow(raw_likes),
+            videos_count=fixIntOverflow(raw_videos),
             is_verified=bool(user_data.get("verified", False)),
             is_private=is_private,
             extraction_method="SSR_JSON_REHYDRATION",
@@ -107,7 +107,7 @@ class TikTokHTMLParser:
             notes=notes,
         )
 
-    def _parse_intercepted_videos(self, username: str) -> List[VideoMetrics]:
+    def parseInterceptedVideos(self, username: str) -> List[VideoMetrics]:
         videos_by_id: Dict[str, VideoMetrics] = {}
 
         for payload in self.intercepted_payloads:
@@ -135,16 +135,16 @@ class TikTokHTMLParser:
                     url=f"https://www.tiktok.com/@{username}/video/{vid_id}",
                     description=item.get("desc") or None,
                     created_at=created_iso,
-                    views=fix_int32_overflow(stats.get("playCount")),
-                    likes=fix_int32_overflow(stats.get("diggCount")),
-                    comments=fix_int32_overflow(stats.get("commentCount")),
-                    shares=fix_int32_overflow(stats.get("shareCount")),
-                    saves=fix_int32_overflow(stats.get("collectCount")),
+                    views=fixIntOverflow(stats.get("playCount")),
+                    likes=fixIntOverflow(stats.get("diggCount")),
+                    comments=fixIntOverflow(stats.get("commentCount")),
+                    shares=fixIntOverflow(stats.get("shareCount")),
+                    saves=fixIntOverflow(stats.get("collectCount")),
                 )
 
         return list(videos_by_id.values())
 
-    def _extract_videos_from_dom(self, username: str) -> List[VideoMetrics]:
+    def extractVideosFromDOM(self, username: str) -> List[VideoMetrics]:
         videos_by_id: Dict[str, VideoMetrics] = {}
 
         # Vía A: Por atributo data-e2e="user-post-item"
@@ -161,7 +161,7 @@ class TikTokHTMLParser:
                 video_id=vid_id,
                 url=video_url if video_url.startswith("http") else f"https://www.tiktok.com{video_url}",
                 description=img_tag["alt"].strip() if img_tag and img_tag.get("alt") else None,
-                views=parse_metric_string(views_tag.get_text(strip=True)) if views_tag else None,
+                views=parseMetricString(views_tag.get_text(strip=True)) if views_tag else None,
             )
 
         # Vía B: Si TikTok cambió data-e2e, buscar cualquier etiqueta <a> que apunte a un video del usuario
@@ -180,13 +180,13 @@ class TikTokHTMLParser:
                     video_id=vid_id,
                     url=f"https://www.tiktok.com/@{username}/video/{vid_id}",
                     description=img_tag["alt"].strip() if img_tag and img_tag.get("alt") else None,
-                    views=parse_metric_string(views_tag.get_text(strip=True)) if views_tag else None,
+                    views=parseMetricString(views_tag.get_text(strip=True)) if views_tag else None,
                 )
 
         return list(videos_by_id.values())
 
     @staticmethod
-    def parse_single_video_html(html_content: str, fallback_video: VideoMetrics) -> VideoMetrics:
+    def parseSingleVideoHtml(html_content: str, fallback_video: VideoMetrics) -> VideoMetrics:
         soup = BeautifulSoup(html_content, "html.parser")
         script_tag = soup.find("script", id="__UNIVERSAL_DATA_FOR_REHYDRATION__")
         if not script_tag or not script_tag.string:
@@ -210,16 +210,16 @@ class TikTokHTMLParser:
                 url=fallback_video.url,
                 description=item_struct.get("desc") or fallback_video.description,
                 created_at=created_iso,
-                views=fix_int32_overflow(stats.get("playCount")) or fallback_video.views,
-                likes=fix_int32_overflow(stats.get("diggCount")),
-                comments=fix_int32_overflow(stats.get("commentCount")),
-                shares=fix_int32_overflow(stats.get("shareCount")),
-                saves=fix_int32_overflow(stats.get("collectCount")),
+                views=fixIntOverflow(stats.get("playCount")) or fallback_video.views,
+                likes=fixIntOverflow(stats.get("diggCount")),
+                comments=fixIntOverflow(stats.get("commentCount")),
+                shares=fixIntOverflow(stats.get("shareCount")),
+                saves=fixIntOverflow(stats.get("collectCount")),
             )
         except Exception:
             return fallback_video
 
-    def _parse_from_dom(self) -> Optional[TikTokProfile]:
+    def parseFromDOM(self) -> Optional[TikTokProfile]:
         title_node = self.soup.find(attrs={"data-e2e": "user-title"})
         subtitle_node = self.soup.find(attrs={"data-e2e": "user-subtitle"})
         followers_node = self.soup.find(attrs={"data-e2e": "followers-count"})
@@ -237,9 +237,9 @@ class TikTokHTMLParser:
             username=title_node.get_text(strip=True) if title_node else self.requested_username,
             display_name=subtitle_node.get_text(strip=True) if subtitle_node else None,
             biography=bio_node.get_text(strip=True) if bio_node else None,
-            followers_count=parse_metric_string(followers_node.get_text(strip=True)) if followers_node else None,
-            following_count=parse_metric_string(following_node.get_text(strip=True)) if following_node else None,
-            total_likes_count=parse_metric_string(likes_node.get_text(strip=True)) if likes_node else None,
+            followers_count=parseMetricString(followers_node.get_text(strip=True)) if followers_node else None,
+            following_count=parseMetricString(following_node.get_text(strip=True)) if following_node else None,
+            total_likes_count=parseMetricString(likes_node.get_text(strip=True)) if likes_node else None,
             videos_count=None,
             is_verified=None,
             is_private=is_private,

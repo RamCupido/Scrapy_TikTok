@@ -10,7 +10,7 @@ from playwright.sync_api import (
 )
 from src.config import DEFAULT_TIMEOUT_MS, RENDER_WAIT_MS, HEADLESS_MODE, DEFAULT_USER_AGENT, TIKTOK_BASE_URL
 from src.models import TikTokProfile, VideoMetrics
-from src.validators import validate_and_clean_username
+from src.validators import validateAndCleanUsername
 from src.parser import TikTokHTMLParser
 from src.exceptions import NetworkOrNavigationError, ProfileNotFoundError
 
@@ -31,7 +31,7 @@ class TikTokProfileScraper:
         self.scroll_steps = scroll_steps
         self.max_deep_videos = max_deep_videos
 
-    def _dismiss_login_modals(self, page: Page) -> None:
+    def dismissLoginModals(self, page: Page) -> None:
         selectors = [
             '[data-e2e="modal-close-inner-button"]',
             'div[role="dialog"] button[aria-label="Close"]',
@@ -46,8 +46,8 @@ class TikTokProfileScraper:
             except Exception:
                 pass
 
-    def fetch_profile(self, raw_username: str, save_cookies: bool = True) -> TikTokProfile:
-        username = validate_and_clean_username(raw_username)
+    def fetchProfile(self, raw_username: str, save_cookies: bool = True) -> TikTokProfile:
+        username = validateAndCleanUsername(raw_username)
         target_url = f"{TIKTOK_BASE_URL}/@{username}"
         intercepted_video_payloads: List[Dict[str, Any]] = []
 
@@ -104,13 +104,13 @@ class TikTokProfileScraper:
                     except PlaywrightTimeoutError:
                         page.wait_for_timeout(RENDER_WAIT_MS)
 
-                    self._dismiss_login_modals(page)
+                    self.dismissLoginModals(page)
 
                     # Scroll progresivo para activar el IntersectionObserver de la cuadrícula de videos
                     for _ in range(self.scroll_steps):
                         page.mouse.wheel(0, 800)
                         page.wait_for_timeout(1500)
-                        self._dismiss_login_modals(page)
+                        self.dismissLoginModals(page)
 
                     html_content = page.content()
 
@@ -135,7 +135,7 @@ class TikTokProfileScraper:
                                 page.wait_for_timeout(1200)
                                 vid_html = page.content()
                                 enriched_videos.append(
-                                    TikTokHTMLParser.parse_single_video_html(vid_html, vid)
+                                    TikTokHTMLParser.parseSingleVideoHtml(vid_html, vid)
                                 )
                             except Exception:
                                 enriched_videos.append(vid)

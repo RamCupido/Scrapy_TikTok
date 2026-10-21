@@ -14,7 +14,7 @@ from src.models import TikTokProfile
 
 OUTPUT_FILE = Path(__file__).resolve().with_name("scraped_profiles.json")
 
-def format_value(value: Any) -> str:
+def formatValue(value: Any) -> str:
     if value is None:
         return "No disponible"
     if isinstance(value, bool):
@@ -23,21 +23,21 @@ def format_value(value: Any) -> str:
         return f"{value:,}"
     return str(value)
 
-def print_profile_report(profile: TikTokProfile) -> None:
+def printProfileReport(profile: TikTokProfile) -> None:
     separator = "=" * 65
     print(f"\n{separator}")
     print(f" REPORTE DE PERFIL PÚBLICO DE TIKTOK: @{profile.username}")
     print(separator)
-    print(f"  Nombre visible      : {format_value(profile.display_name)}")
-    print(f"  Cuenta verificada   : {format_value(profile.is_verified)}")
-    print(f"  Cuenta privada      : {format_value(profile.is_private)}")
-    print(f"  Biografía           : {format_value(profile.biography)}")
+    print(f"  Nombre visible      : {formatValue(profile.display_name)}")
+    print(f"  Cuenta verificada   : {formatValue(profile.is_verified)}")
+    print(f"  Cuenta privada      : {formatValue(profile.is_private)}")
+    print(f"  Biografía           : {formatValue(profile.biography)}")
     print("-" * 65)
     print(" MÉTRICAS E INTERACCIONES GENERALES DEL PERFIL:")
-    print(f"  Seguidores          : {format_value(profile.followers_count)}")
-    print(f"  Seguidos            : {format_value(profile.following_count)}")
-    print(f"  Likes acumulados    : {format_value(profile.total_likes_count)}")
-    print(f"  Publicaciones (tot) : {format_value(profile.videos_count)}")
+    print(f"  Seguidores          : {formatValue(profile.followers_count)}")
+    print(f"  Seguidos            : {formatValue(profile.following_count)}")
+    print(f"  Likes acumulados    : {formatValue(profile.total_likes_count)}")
+    print(f"  Publicaciones (tot) : {formatValue(profile.videos_count)}")
 
     if not profile.recent_videos:
         print("  [!] No se obtuvieron métricas de publicaciones individuales en esta sesión.")
@@ -48,9 +48,9 @@ def print_profile_report(profile: TikTokProfile) -> None:
                 short_desc = short_desc[:52] + "..."
             print(
                 f"  {idx:02d}. ID: {vid.video_id or 'N/A'} | Fecha: {vid.created_at or 'N/A'}\n"
-                f"      Vistas: {format_value(vid.views)} | Likes: {format_value(vid.likes)} | "
-                f"Comentarios: {format_value(vid.comments)} | Guardados: {format_value(vid.saves)} | "
-                f"Compartidos: {format_value(vid.shares)}\n"
+                f"      Vistas: {formatValue(vid.views)} | Likes: {formatValue(vid.likes)} | "
+                f"Comentarios: {formatValue(vid.comments)} | Guardados: {formatValue(vid.saves)} | "
+                f"Compartidos: {formatValue(vid.shares)}\n"
                 f"      Desc: {short_desc}"
             )
 
@@ -63,7 +63,7 @@ def print_profile_report(profile: TikTokProfile) -> None:
     print("-" * 65)
     print(f"{separator}\n")
 
-def append_profile_to_json(profile: TikTokProfile, filepath: Path = OUTPUT_FILE) -> Path:
+def appendProfileToJson(profile: TikTokProfile, filepath: Path = OUTPUT_FILE) -> Path:
     profiles = []
     if filepath.exists():
         with filepath.open("r", encoding="utf-8") as file:
@@ -78,7 +78,7 @@ def append_profile_to_json(profile: TikTokProfile, filepath: Path = OUTPUT_FILE)
 
     return filepath
 
-def build_arg_parser() -> argparse.ArgumentParser:
+def buildArgParser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Extractor ético de información pública de perfiles de TikTok (Sin APIs)."
     )
@@ -95,7 +95,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     return parser
 
 def main() -> int:
-    parser = build_arg_parser()
+    parser = buildArgParser()
     args = parser.parse_args()
 
     raw_username = args.username
@@ -109,9 +109,9 @@ def main() -> int:
     scraper = TikTokProfileScraper(headless=not args.headed)
 
     try:
-        profile = scraper.fetch_profile(raw_username)
-        print_profile_report(profile)
-        json_path = append_profile_to_json(profile)
+        profile = scraper.fetchProfile(raw_username)
+        printProfileReport(profile)
+        json_path = appendProfileToJson(profile)
         print(f"[+] Datos añadidos al historial JSON: {json_path}")
 
         return 0

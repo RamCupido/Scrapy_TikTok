@@ -9,14 +9,14 @@ MULTIPLIERS = {
 
 UINT32_MODULO = 4_294_967_296  # 2^32
 
-def fix_int32_overflow(value: Optional[Union[int, str]]) -> Optional[int]:
+def fixIntOverflow(value: Optional[Union[int, str]]) -> Optional[int]:
     if value is None:
         return None
 
     try:
         num = int(value)
     except (ValueError, TypeError):
-        return parse_metric_string(str(value))
+        return parseMetricString(str(value))
 
     # Si el número es negativo en un contador que jamás puede ser negativo,
     # aplicamos conversión de complemento a dos (unsigned 32-bit integer)
@@ -24,7 +24,7 @@ def fix_int32_overflow(value: Optional[Union[int, str]]) -> Optional[int]:
         return num + UINT32_MODULO
     return num
 
-def parse_metric_string(raw_value: Optional[str]) -> Optional[int]:
+def parseMetricString(raw_value: Optional[str]) -> Optional[int]:
     if raw_value is None:
         return None
 
@@ -34,7 +34,7 @@ def parse_metric_string(raw_value: Optional[str]) -> Optional[int]:
 
     # Si es un entero negativo en texto proveniente de stats, corregir overflow
     if text.startswith("-") and text[1:].isdigit():
-        return fix_int32_overflow(int(text))
+        return fixIntOverflow(int(text))
 
     multiplier = 1
     for suffix, mult_val in MULTIPLIERS.items():

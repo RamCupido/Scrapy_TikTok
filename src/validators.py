@@ -7,7 +7,7 @@ class InvalidUsernameError(ValueError):
 # Longitud entre 2 y 24 caracteres. No puede terminar en punto.
 USERNAME_REGEX = re.compile(r"^[a-zA-Z0-9_.]{2,24}$")
 
-def validate_and_clean_username(raw_username: str) -> str:
+def validateAndCleanUsername(raw_username: str) -> str:
     if not raw_username or not isinstance(raw_username, str):
         raise InvalidUsernameError("El nombre de usuario no puede estar vacío.")
 
