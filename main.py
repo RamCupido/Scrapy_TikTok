@@ -6,8 +6,12 @@ import json
 import sys
 from pathlib import Path
 from typing import Any
-from src.scraper import TikTokProfileScraper, NetworkOrNavigationError
-from src.parser import ProfileNotFoundError, AccessControlTriggeredError
+from src.scraper import TikTokProfileScraper
+from src.exceptions import (
+    AccessControlTriggeredError,
+    NetworkOrNavigationError,
+    ProfileNotFoundError,
+)
 from src.validators import InvalidUsernameError
 from src.models import TikTokProfile
 
@@ -40,6 +44,21 @@ def print_profile_report(profile: TikTokProfile) -> None:
     print(f"  Likes acumulados    : {format_value(profile.total_likes_count)}")
     print(f"  Publicaciones (tot) : {format_value(profile.videos_count)}")
 
+    if not profile.recent_videos:
+        print("  [!] No se obtuvieron métricas de publicaciones individuales en esta sesión.")
+    else:
+        for idx, vid in enumerate(profile.recent_videos[:15], start=1):
+            short_desc = (vid.description or "Sin descripción").replace("\n", " ")
+            if len(short_desc) > 55:
+                short_desc = short_desc[:52] + "..."
+            print(
+                f"  {idx:02d}. ID: {vid.video_id or 'N/A'} | Fecha: {vid.created_at or 'N/A'}\n"
+                f"      Vistas: {format_value(vid.views)} | Likes: {format_value(vid.likes)} | "
+                f"Comentarios: {format_value(vid.comments)} | Guardados: {format_value(vid.saves)} | "
+                f"Compartidos: {format_value(vid.shares)}\n"
+                f"      Desc: {short_desc}"
+            )
+            
     if profile.notes:
         print("-" * 65)
         print(" NOTAS TÉCNICAS DE LA EXTRACCIÓN:")

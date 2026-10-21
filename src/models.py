@@ -5,14 +5,16 @@ from datetime import datetime, timezone
 
 @dataclass
 class VideoMetrics:
-    """Métricas públicas asociadas a una publicación individual."""
+    """Métricas públicas completas asociadas a una publicación individual."""
     video_id: Optional[str] = None
     url: Optional[str] = None
     description: Optional[str] = None
+    created_at: Optional[str] = None
     views: Optional[int] = None
     likes: Optional[int] = None
     comments: Optional[int] = None
     shares: Optional[int] = None
+    saves: Optional[int] = None  # Guardados / Favoritos (collectCount)
 
 @dataclass
 class TikTokProfile:
