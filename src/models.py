@@ -33,6 +33,29 @@ class BigFiveScores:
         }
 
 @dataclass
+class VideoOutlier:
+    video_id: str
+    views: int
+    z_score: float
+
+@dataclass
+class ProfileIntelligence:
+    follower_to_view_ratio: float = 0.0
+    average_engagement_rate: float = 0.0
+    weighted_engagement_rate: float = 0.0
+    viral_outliers: List[VideoOutlier] = field(default_factory=list)
+    hashtag_performance: Dict[str, int] = field(default_factory=dict)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "follower_to_view_ratio_pct": round(self.follower_to_view_ratio * 100, 2),
+            "average_engagement_rate_pct": round(self.average_engagement_rate, 2),
+            "weighted_engagement_rate_pct": round(self.weighted_engagement_rate, 2),
+            "viral_outliers": [asdict(outlier) for outlier in self.viral_outliers],
+            "hashtag_performance": self.hashtag_performance,
+        }
+    
+@dataclass
 class TikTokProfile:
     username: str
     display_name: Optional[str] = None
@@ -50,6 +73,7 @@ class TikTokProfile:
         default_factory=lambda: datetime.now(timezone.utc).isoformat()
     )
     personality: Optional[BigFiveScores] = None
+    intelligence: Optional[ProfileIntelligence] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)

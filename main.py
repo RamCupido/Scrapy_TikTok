@@ -12,6 +12,7 @@ from src.exceptions import (
 from src.validators import InvalidUsernameError
 from src.models import BigFiveScores, TikTokProfile
 from src.personality import BigFiveAnalyzer
+from src.analytics import DataIntelligenceAnalyzer
 
 OUTPUT_FILE = Path(__file__).resolve().with_name("scraped_profiles.json")
 
@@ -78,6 +79,30 @@ def print_personality_report(scores: BigFiveScores) -> None:
     print(f"  [N] Neuroticismo (Neuroticism)     : {render_score_bar(scores.neuroticism)}")
     print("-" * 65)
 
+def print_intelligence_report(intel: Any) -> None:
+    print("-" * 65)
+    print(" INTELIGENCIA DE NEGOCIO Y AUDITORÍA DE DATOS:")
+    print("-" * 65)
+    
+    print(f"  [1] Conversión Seguidores -> Vistas : {intel.follower_to_view_ratio * 100:.2f}%")
+    print(f"  [2] Engagement Rate (ER) Promedio   : {intel.average_engagement_rate:.2f}%")
+    print(f"  [2] ER Ponderado (Saves/Shares x2)  : {intel.weighted_engagement_rate:.2f}%")
+    
+    print(f"\n  [1] Anomalías Virales Detectadas (Z-Score > 2.0):")
+    if intel.viral_outliers:
+        for out in intel.viral_outliers:
+            print(f"      * Video ID: {out.video_id} | Vistas: {out.views:,} | Z-Score: {out.z_score}")
+    else:
+        print("      Ninguna anomalía estadística en la muestra reciente.")
+
+    print(f"\n  [3] Top Hashtags por Impacto Promedio (Vistas):")
+    if intel.hashtag_performance:
+        for idx, (tag, avg_v) in enumerate(intel.hashtag_performance.items(), 1):
+            print(f"      {idx}. #{tag.ljust(15)} : {avg_v:,} vistas prom.")
+    else:
+        print("      No se detectaron hashtags suficientes en la muestra.")
+    print("-" * 65)
+
 def appendProfileToJson(profile: TikTokProfile, filepath: Path = OUTPUT_FILE) -> Path:
     profiles = []
     if filepath.exists():
@@ -112,6 +137,11 @@ def buildArgParser() -> argparse.ArgumentParser:
         action="store_true",
         help="Ejecuta inferencia NLP con Hugging Face sobre la bio y descripciones de videos.",
     )
+    parser.add_argument(
+        "--analytics",
+        action="store_true",
+        help="Ejecuta el análisis estadístico, engagement y rendimiento de hashtags.",
+    )
     return parser
 
 def main() -> int:
@@ -142,6 +172,11 @@ def main() -> int:
                         print_personality_report(profile.personality)
                     else:
                         print("[!] Texto insuficiente en bio y videos para inferir rasgos de personalidad.")
+        if args.analytics:
+            print("[*] Procesando auditoría estadística e inteligencia de datos...")
+            analyzer = DataIntelligenceAnalyzer(profile)
+            profile.intelligence = analyzer.generate_intelligence()
+            print_intelligence_report(profile.intelligence)
         json_path = appendProfileToJson(profile)
         print(f"[+] Datos añadidos al historial JSON: {json_path}")
 
