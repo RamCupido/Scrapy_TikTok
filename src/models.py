@@ -15,6 +15,24 @@ class VideoMetrics:
     saves: Optional[int] = None
 
 @dataclass
+class BigFiveScores:
+    """Puntuaciones normalizadas (0.0 a 1.0) para las 5 dimensiones OCEAN."""
+    openness: float = 0.5
+    conscientiousness: float = 0.5
+    extraversion: float = 0.5
+    agreeableness: float = 0.5
+    neuroticism: float = 0.5
+
+    def to_dict(self) -> Dict[str, float]:
+        return {
+            "openness": round(self.openness, 3),
+            "conscientiousness": round(self.conscientiousness, 3),
+            "extraversion": round(self.extraversion, 3),
+            "agreeableness": round(self.agreeableness, 3),
+            "neuroticism": round(self.neuroticism, 3),
+        }
+
+@dataclass
 class TikTokProfile:
     username: str
     display_name: Optional[str] = None
@@ -31,6 +49,7 @@ class TikTokProfile:
     extracted_at: str = field(
         default_factory=lambda: datetime.now(timezone.utc).isoformat()
     )
+    personality: Optional[BigFiveScores] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)

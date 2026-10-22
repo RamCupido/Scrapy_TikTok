@@ -1,2 +1,5 @@
-playwright==1.48.0
-beautifulsoup4==4.12.3
+playwright
+beautifulsoup4
+torch
+transformers
+sentencepiece

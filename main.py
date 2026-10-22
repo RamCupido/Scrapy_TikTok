@@ -10,7 +10,8 @@ from src.exceptions import (
     ProfileNotFoundError,
 )
 from src.validators import InvalidUsernameError
-from src.models import TikTokProfile
+from src.models import BigFiveScores, TikTokProfile
+from src.personality import BigFiveAnalyzer
 
 OUTPUT_FILE = Path(__file__).resolve().with_name("scraped_profiles.json")
 
@@ -60,8 +61,22 @@ def printProfileReport(profile: TikTokProfile) -> None:
         for note in profile.notes:
             print(f"  * {note}")
 
+def render_score_bar(score: float, width: int = 20) -> str:
+    """Genera una barra ASCII visual para representar la escala de 0.0 a 1.0."""
+    filled = int(round(score * width))
+    bar = "█" * filled + "░" * (width - filled)
+    return f"[{bar}] {score * 100:5.1f}%"
+
+def print_personality_report(scores: BigFiveScores) -> None:
     print("-" * 65)
-    print(f"{separator}\n")
+    print(" ANÁLISIS DE PERSONALIDAD BIG FIVE (OCEAN - HUGGING FACE):")
+    print("-" * 65)
+    print(f"  [O] Apertura (Openness)            : {render_score_bar(scores.openness)}")
+    print(f"  [C] Responsabilidad (Conscient.)   : {render_score_bar(scores.conscientiousness)}")
+    print(f"  [E] Extraversión (Extraversion)    : {render_score_bar(scores.extraversion)}")
+    print(f"  [A] Amabilidad (Agreeableness)     : {render_score_bar(scores.agreeableness)}")
+    print(f"  [N] Neuroticismo (Neuroticism)     : {render_score_bar(scores.neuroticism)}")
+    print("-" * 65)
 
 def appendProfileToJson(profile: TikTokProfile, filepath: Path = OUTPUT_FILE) -> Path:
     profiles = []
@@ -92,6 +107,11 @@ def buildArgParser() -> argparse.ArgumentParser:
         action="store_true",
         help="Ejecuta el navegador con ventana visible en lugar de modo headless.",
     )
+    parser.add_argument(
+        "--analyze-personality",
+        action="store_true",
+        help="Ejecuta inferencia NLP con Hugging Face sobre la bio y descripciones de videos.",
+    )
     return parser
 
 def main() -> int:
@@ -111,6 +131,17 @@ def main() -> int:
     try:
         profile = scraper.fetchProfile(raw_username)
         printProfileReport(profile)
+        if args.analyze_personality:
+                    print("[*] Iniciando análisis Big Five con Hugging Face Transformers...")
+                    analyzer = BigFiveAnalyzer()
+                    profile.personality = analyzer.analyze_profile_corpus(
+                        biography=profile.biography,
+                        videos=profile.recent_videos,
+                    )
+                    if profile.personality:
+                        print_personality_report(profile.personality)
+                    else:
+                        print("[!] Texto insuficiente en bio y videos para inferir rasgos de personalidad.")
         json_path = appendProfileToJson(profile)
         print(f"[+] Datos añadidos al historial JSON: {json_path}")
 
