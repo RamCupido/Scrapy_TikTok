@@ -13,6 +13,7 @@ from src.validators import InvalidUsernameError
 from src.models import BigFiveScores, TikTokProfile
 from src.personality import BigFiveAnalyzer
 from src.analytics import DataIntelligenceAnalyzer
+from src.ai_summary import AIIntelligenceAnalyst
 
 OUTPUT_FILE = Path(__file__).resolve().with_name("scraped_profiles.json")
 
@@ -101,6 +102,10 @@ def print_intelligence_report(intel: Any) -> None:
             print(f"      {idx}. #{tag.ljust(15)} : {avg_v:,} vistas prom.")
     else:
         print("      No se detectaron hashtags suficientes en la muestra.")
+        
+    if hasattr(intel, 'ai_summary') and intel.ai_summary:
+        print("\n  [🧠] SÍNTESIS DE INTELIGENCIA ARTIFICIAL:")
+        print(f"      {intel.ai_summary}")
     print("-" * 65)
 
 def appendProfileToJson(profile: TikTokProfile, filepath: Path = OUTPUT_FILE) -> Path:
@@ -176,6 +181,9 @@ def main() -> int:
             print("[*] Procesando auditoría estadística e inteligencia de datos...")
             analyzer = DataIntelligenceAnalyzer(profile)
             profile.intelligence = analyzer.generate_intelligence()
+            print("[*] Generando síntesis estratégica con LLM...")
+            ai_analyst = AIIntelligenceAnalyst()
+            profile.intelligence.ai_summary = ai_analyst.generate_summary(profile.intelligence)
             print_intelligence_report(profile.intelligence)
         json_path = appendProfileToJson(profile)
         print(f"[+] Datos añadidos al historial JSON: {json_path}")
