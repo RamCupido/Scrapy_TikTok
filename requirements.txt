@@ -4,3 +4,4 @@ torch
 transformers
 sentencepiece
 accelerate
+streamlit>=1.50

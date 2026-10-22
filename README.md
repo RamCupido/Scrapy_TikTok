@@ -65,9 +65,29 @@ El programa intenta extraer los datos desde el JSON de la página y usa el DOM c
    python -m playwright install chromium
    ```
 
-## Uso
+   ## Panel visual
 
-Desde la carpeta del proyecto, ejecuta el comando principal:
+   El panel muestra el historial guardado en `scraped_profiles.json`, incluidas las
+   métricas de perfil y publicaciones, los análisis que existan y una vista de los
+   datos completos. Para iniciarlo desde la carpeta del proyecto:
+
+   ```bash
+   streamlit run dashboard.py
+   ```
+
+   Se abrirá en el navegador. Si quieres que una nueva extracción incluya los
+   análisis de personalidad y métricas, ejecútala con ambas opciones:
+
+   ```bash
+   python main.py --username USUARIO --analyze-personality --analytics
+   ```
+
+   El panel indica cuando un análisis no está disponible en una extracción antigua
+   o cuando la recolección no obtuvo determinados datos.
+
+   ## Uso
+
+   Desde la carpeta del proyecto, ejecuta el comando principal:
 
 ```bash
 python main.py -u khaby.lame --headed
@@ -124,4 +144,3 @@ El archivo `.env.example` muestra los valores de referencia, pero la aplicación
 - Si TikTok presenta un control de acceso, prueba el comando con `--headed` para poder ver el navegador. Esto no garantiza que el acceso sea permitido.
 - TikTok puede cambiar la estructura de sus páginas, bloquear solicitudes o limitar los datos disponibles; por ello, la extracción puede ser parcial o dejar campos como “No disponible”.
 - Usa la herramienta respetando los términos de TikTok y las leyes aplicables. Está destinada a información visible públicamente y no elude controles de acceso.
-
