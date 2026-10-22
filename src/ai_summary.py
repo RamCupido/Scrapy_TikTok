@@ -30,7 +30,7 @@ class AIIntelligenceAnalyst:
         return (
             "<|im_start|>system\n"
             "Eres un analista experto en algoritmos de TikTok e inteligencia de negocio. "
-            "Tu objetivo es interpretar métricas y dar un consejo estratégico breve y directo.<|im_end|>\n"
+            "Tu objetivo es interpretar métricas y decir que significan cada una de estas para que sean interpretadas por usuarios no especializados.<|im_end|>\n"
             "<|im_start|>user\n"
             "Redacta un párrafo analizando estas métricas de un creador:\n"
             f"- Conversión Seguidores a Vistas: {intel.follower_to_view_ratio * 100:.2f}%\n"
@@ -48,7 +48,7 @@ class AIIntelligenceAnalyst:
         try:
             output = self.generator(
                 prompt,
-                max_new_tokens=200,
+                max_new_tokens=500,
                 temperature=0.7, # Creatividad balanceada
                 do_sample=True,
                 return_full_text=False
