@@ -5,6 +5,13 @@ from typing import Any
 
 import streamlit as st
 
+from src.exceptions import (
+    AccessControlTriggeredError,
+    NetworkOrNavigationError,
+    ProfileNotFoundError,
+)
+from src.validators import InvalidUsernameError
+
 
 OUTPUT_FILE = Path(__file__).resolve().with_name("scraped_profiles.json")
 
@@ -260,7 +267,53 @@ def render_intelligence(profile: dict[str, Any]) -> None:
 def main() -> None:
     st.set_page_config(page_title="TikTok Profile Insights", page_icon="📊", layout="wide")
     st.title("TikTok Profile Insights")
-    st.caption("Panel local de perfiles públicos, publicaciones y análisis recopilados.")
+    st.caption("Extrae un perfil público y consulta sus métricas y análisis desde esta interfaz.")
+
+    st.sidebar.header("Nueva extracción")
+    with st.sidebar.form("profile_analysis_form"):
+        raw_username = st.text_input("Usuario de TikTok", placeholder="@usuario")
+        analyze_personality = st.checkbox("Incluir análisis de personalidad", value=True)
+        analyze_metrics = st.checkbox("Incluir análisis de métricas e IA", value=True)
+        headed = st.checkbox("Mostrar navegador durante la extracción", value=False)
+        submitted = st.form_submit_button("Extraer y analizar", type="primary")
+
+    if submitted:
+        if not raw_username.strip():
+            st.sidebar.error("Escribe un nombre de usuario para iniciar.")
+        else:
+            succeeded = False
+            with st.status("Preparando extracción...", expanded=True) as status:
+                try:
+                    from main import runProfileAnalysis
+
+                    profile, json_path = runProfileAnalysis(
+                        raw_username,
+                        headed=headed,
+                        analyze_personality=analyze_personality,
+                        analytics=analyze_metrics,
+                        progress_callback=lambda message: status.update(
+                            label=message,
+                            state="running",
+                            expanded=True,
+                        ),
+                    )
+                    status.update(label="Extracción y análisis completados", state="complete")
+                    succeeded = True
+                except (
+                    InvalidUsernameError,
+                    ProfileNotFoundError,
+                    AccessControlTriggeredError,
+                    NetworkOrNavigationError,
+                ) as error:
+                    status.update(label="No se pudo completar la extracción", state="error")
+                    st.error(str(error))
+                except Exception as error:
+                    status.update(label="Ocurrió un error inesperado", state="error")
+                    st.exception(error)
+
+            if succeeded:
+                st.success(f"Perfil @{profile.username} guardado en {json_path.name}.")
+                st.rerun()
 
     try:
         profiles = load_profiles()
@@ -271,11 +324,9 @@ def main() -> None:
 
     if not profiles:
         st.info(
-            "Todavía no hay perfiles en el historial. Ejecuta primero el scraper desde "
-            "la carpeta del proyecto y vuelve a cargar este panel."
+            "Todavía no hay perfiles en el historial. Escribe un usuario en el formulario "
+            "de la barra lateral para iniciar la primera extracción."
         )
-        st.code("python main.py --username USUARIO --analyze-personality --analytics")
-        st.stop()
         return
 
     st.sidebar.header("Historial")

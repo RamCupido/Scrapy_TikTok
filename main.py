@@ -2,7 +2,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 from src.scraper import TikTokProfileScraper
 from src.exceptions import (
     AccessControlTriggeredError,
@@ -123,6 +123,41 @@ def appendProfileToJson(profile: TikTokProfile, filepath: Path = OUTPUT_FILE) ->
 
     return filepath
 
+def runProfileAnalysis(
+    raw_username: str,
+    headed: bool = False,
+    analyze_personality: bool = False,
+    analytics: bool = False,
+    progress_callback: Callable[[str], None] | None = None,
+) -> tuple[TikTokProfile, Path]:
+    def report_progress(message: str) -> None:
+        if progress_callback:
+            progress_callback(message)
+
+    report_progress("Extrayendo datos públicos del perfil...")
+    scraper = TikTokProfileScraper(headless=not headed)
+    profile = scraper.fetchProfile(raw_username)
+
+    if analyze_personality:
+        report_progress("Analizando personalidad con Big Five...")
+        analyzer = BigFiveAnalyzer()
+        profile.personality = analyzer.analyze_profile_corpus(
+            biography=profile.biography,
+            videos=profile.recent_videos,
+        )
+
+    if analytics:
+        report_progress("Calculando métricas de engagement y rendimiento...")
+        analyzer = DataIntelligenceAnalyzer(profile)
+        profile.intelligence = analyzer.generate_intelligence()
+        report_progress("Generando interpretación estratégica con IA...")
+        ai_analyst = AIIntelligenceAnalyst()
+        profile.intelligence.ai_summary = ai_analyst.generate_summary(profile.intelligence)
+
+    report_progress("Guardando resultados en el historial...")
+    json_path = appendProfileToJson(profile)
+    return profile, json_path
+
 def buildArgParser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Extractor ético de información pública de perfiles de TikTok (Sin APIs)."
@@ -161,31 +196,25 @@ def main() -> int:
             print("\nOperación cancelada por el usuario.")
             return 1
 
-    scraper = TikTokProfileScraper(headless=not args.headed)
-
     try:
-        profile = scraper.fetchProfile(raw_username)
+        def print_progress(message: str) -> None:
+            print(f"[*] {message}")
+
+        profile, json_path = runProfileAnalysis(
+            raw_username,
+            headed=args.headed,
+            analyze_personality=args.analyze_personality,
+            analytics=args.analytics,
+            progress_callback=print_progress,
+        )
         printProfileReport(profile)
         if args.analyze_personality:
-                    print("[*] Iniciando análisis Big Five con Hugging Face Transformers...")
-                    analyzer = BigFiveAnalyzer()
-                    profile.personality = analyzer.analyze_profile_corpus(
-                        biography=profile.biography,
-                        videos=profile.recent_videos,
-                    )
-                    if profile.personality:
-                        print_personality_report(profile.personality)
-                    else:
-                        print("[!] Texto insuficiente en bio y videos para inferir rasgos de personalidad.")
+            if profile.personality:
+                print_personality_report(profile.personality)
+            else:
+                print("[!] Texto insuficiente en bio y videos para inferir rasgos de personalidad.")
         if args.analytics:
-            print("[*] Procesando auditoría estadística e inteligencia de datos...")
-            analyzer = DataIntelligenceAnalyzer(profile)
-            profile.intelligence = analyzer.generate_intelligence()
-            print("[*] Generando síntesis estratégica con LLM...")
-            ai_analyst = AIIntelligenceAnalyst()
-            profile.intelligence.ai_summary = ai_analyst.generate_summary(profile.intelligence)
             print_intelligence_report(profile.intelligence)
-        json_path = appendProfileToJson(profile)
         print(f"[+] Datos añadidos al historial JSON: {json_path}")
 
         return 0

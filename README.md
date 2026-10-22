@@ -1,6 +1,6 @@
 # TikTok Public Profile Scraper
 
-Aplicación de línea de comandos escrita en Python para recopilar información visible de perfiles públicos de TikTok. Usa Playwright para abrir la página y Beautiful Soup para analizar el HTML y los datos de hidratación que TikTok incluye en la página.
+Aplicación escrita en Python para recopilar y analizar información visible de perfiles públicos de TikTok. Incluye un panel visual en Streamlit y una interfaz opcional de línea de comandos. Usa Playwright para abrir la página y Beautiful Soup para analizar el HTML y los datos de hidratación que TikTok incluye en la página.
 
 La herramienta no necesita credenciales de TikTok. La cantidad de datos disponible depende de lo que TikTok muestre sin iniciar sesión y puede cambiar si la plataforma modifica su sitio o limita el acceso.
 
@@ -65,29 +65,31 @@ El programa intenta extraer los datos desde el JSON de la página y usa el DOM c
    python -m playwright install chromium
    ```
 
-   ## Panel visual
+## Panel visual
 
-   El panel muestra el historial guardado en `scraped_profiles.json`, incluidas las
-   métricas de perfil y publicaciones, los análisis que existan y una vista de los
-   datos completos. Para iniciarlo desde la carpeta del proyecto:
+El panel permite ingresar un usuario de TikTok, extraer el perfil y ejecutar los
+análisis de personalidad y métricas desde la interfaz. Ambos análisis vienen
+activados por defecto; también puedes desactivarlos individualmente o elegir si
+quieres mostrar el navegador durante la extracción. Al terminar, el nuevo perfil
+se selecciona automáticamente en el panel y queda guardado en el historial
+`scraped_profiles.json`. Desde las otras secciones puedes consultar las métricas
+de perfil y publicaciones, los análisis disponibles y los datos completos.
 
-   ```bash
-   streamlit run dashboard.py
-   ```
+Para iniciar la interfaz desde la carpeta del proyecto:
 
-   Se abrirá en el navegador. Si quieres que una nueva extracción incluya los
-   análisis de personalidad y métricas, ejecútala con ambas opciones:
+```bash
+streamlit run dashboard.py
+```
 
-   ```bash
-   python main.py --username USUARIO --analyze-personality --analytics
-   ```
+La extracción también puede seguir ejecutándose desde la consola, si lo prefieres:
 
-   El panel indica cuando un análisis no está disponible en una extracción antigua
-   o cuando la recolección no obtuvo determinados datos.
+```bash
+python main.py --username USUARIO --analyze-personality --analytics
+```
 
-   ## Uso
+## Uso
 
-   Desde la carpeta del proyecto, ejecuta el comando principal:
+Desde la carpeta del proyecto, ejecuta el comando principal:
 
 ```bash
 python main.py -u khaby.lame --headed
