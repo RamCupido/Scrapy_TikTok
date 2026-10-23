@@ -256,14 +256,6 @@ def render_intelligence(profile: dict[str, Any]) -> None:
     else:
         st.caption("No se detectaron anomalías virales en la muestra.")
 
-    summary = intelligence.get("ai_summary")
-    st.markdown("#### Interpretación estratégica")
-    if summary:
-        st.write(summary)
-    else:
-        st.caption("Esta extracción no contiene una síntesis generada por IA.")
-
-
 def main() -> None:
     st.set_page_config(page_title="TikTok Profile Insights", page_icon="📊", layout="wide")
     st.title("TikTok Profile Insights")

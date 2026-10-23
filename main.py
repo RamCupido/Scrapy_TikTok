@@ -3,6 +3,7 @@ import json
 import sys
 from pathlib import Path
 from typing import Any, Callable
+from src.ai_summary import AIIntelligenceAnalyst
 from src.scraper import TikTokProfileScraper
 from src.exceptions import (
     AccessControlTriggeredError,
@@ -13,7 +14,6 @@ from src.validators import InvalidUsernameError
 from src.models import BigFiveScores, TikTokProfile
 from src.personality import BigFiveAnalyzer
 from src.analytics import DataIntelligenceAnalyzer
-from src.ai_summary import AIIntelligenceAnalyst
 
 OUTPUT_FILE = Path(__file__).resolve().with_name("scraped_profiles.json")
 
@@ -103,9 +103,6 @@ def print_intelligence_report(intel: Any) -> None:
     else:
         print("      No se detectaron hashtags suficientes en la muestra.")
         
-    if hasattr(intel, 'ai_summary') and intel.ai_summary:
-        print("\n  [🧠] SÍNTESIS DE INTELIGENCIA ARTIFICIAL:")
-        print(f"      {intel.ai_summary}")
     print("-" * 65)
 
 def appendProfileToJson(profile: TikTokProfile, filepath: Path = OUTPUT_FILE) -> Path:
@@ -150,9 +147,6 @@ def runProfileAnalysis(
         report_progress("Calculando métricas de engagement y rendimiento...")
         analyzer = DataIntelligenceAnalyzer(profile)
         profile.intelligence = analyzer.generate_intelligence()
-        report_progress("Generando interpretación estratégica con IA...")
-        ai_analyst = AIIntelligenceAnalyst()
-        profile.intelligence.ai_summary = ai_analyst.generate_summary(profile.intelligence)
 
     report_progress("Guardando resultados en el historial...")
     json_path = appendProfileToJson(profile)
@@ -214,7 +208,19 @@ def main() -> int:
             else:
                 print("[!] Texto insuficiente en bio y videos para inferir rasgos de personalidad.")
         if args.analytics:
-            print_intelligence_report(profile.intelligence)
+            print("[*] Procesando auditoría estadística e inteligencia de datos...")
+            analyzer = DataIntelligenceAnalyzer(profile)
+            profile.intelligence = analyzer.generate_intelligence()
+        
+            if profile.personality:
+                print("[*] Generando dictamen crediticio FinTech con LLM local...")
+                ai_analyst = AIIntelligenceAnalyst()
+                # Pasamos el profile completo para que el LLM lea inteligencia y personalidad
+                profile.intelligence.ai_summary = ai_analyst.generate_summary(profile)
+            else:
+                profile.intelligence.ai_summary = "Requiere ejecutar el flag --analyze-personality previamente."
+            
+        print_intelligence_report(profile.intelligence)
         print(f"[+] Datos añadidos al historial JSON: {json_path}")
 
         return 0

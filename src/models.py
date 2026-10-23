@@ -1,6 +1,7 @@
+import math
+from datetime import datetime, timezone
 from dataclasses import dataclass, field, asdict
 from typing import List, Optional, Dict, Any
-from datetime import datetime, timezone
 
 @dataclass
 class VideoMetrics:
@@ -16,21 +17,48 @@ class VideoMetrics:
 
 @dataclass
 class BigFiveScores:
-    """Puntuaciones normalizadas (0.0 a 1.0) para las 5 dimensiones OCEAN."""
+    """Proporciones (0.0 a 1.0) que suman 1.0 entre las 5 dimensiones OCEAN."""
     openness: float = 0.5
     conscientiousness: float = 0.5
     extraversion: float = 0.5
     agreeableness: float = 0.5
     neuroticism: float = 0.5
 
+    def __post_init__(self) -> None:
+        scores = (
+            self.openness,
+            self.conscientiousness,
+            self.extraversion,
+            self.agreeableness,
+            self.neuroticism,
+        )
+        if any(not math.isfinite(score) or score < 0 for score in scores):
+            raise ValueError("Las puntuaciones Big Five deben ser finitas y no negativas.")
+
+        total = sum(scores)
+        if total == 0:
+            raise ValueError("Las puntuaciones Big Five deben sumar más que cero.")
+
+        self.openness /= total
+        self.conscientiousness /= total
+        self.extraversion /= total
+        self.agreeableness /= total
+        self.neuroticism /= total
+
     def to_dict(self) -> Dict[str, float]:
-        return {
+        scores = {
             "openness": round(self.openness, 3),
             "conscientiousness": round(self.conscientiousness, 3),
             "extraversion": round(self.extraversion, 3),
             "agreeableness": round(self.agreeableness, 3),
             "neuroticism": round(self.neuroticism, 3),
         }
+        largest_score = max(scores, key=lambda trait: scores[trait])
+        scores[largest_score] = round(
+            scores[largest_score] + 1.0 - sum(scores.values()),
+            3,
+        )
+        return scores
 
 @dataclass
 class VideoOutlier:
@@ -45,7 +73,6 @@ class ProfileIntelligence:
     weighted_engagement_rate: float = 0.0
     viral_outliers: List[VideoOutlier] = field(default_factory=list)
     hashtag_performance: Dict[str, int] = field(default_factory=dict)
-    ai_summary: str = ""
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -54,7 +81,6 @@ class ProfileIntelligence:
             "weighted_engagement_rate_pct": round(self.weighted_engagement_rate, 2),
             "viral_outliers": [asdict(outlier) for outlier in self.viral_outliers],
             "hashtag_performance": self.hashtag_performance,
-            "ai_summary": self.ai_summary,
         }
     
 @dataclass
