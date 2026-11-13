@@ -15,7 +15,7 @@ GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta/models"
 
 
 class AIIntelligenceAnalyst:
-    """Genera resúmenes de riesgo crediticio alternativo usando Google Gemini."""
+    """Genera resúmenes de inteligencia y riesgo crediticio alternativo usando Google Gemini."""
 
     def __init__(self, model_name: Optional[str] = None, api_key: Optional[str] = None) -> None:
         load_dotenv(dotenv_path=ENV_PATH, override=True)
@@ -28,11 +28,11 @@ class AIIntelligenceAnalyst:
         self.model_name = (model_name or os.getenv("GEMINI_MODEL") or GEMINI_MODEL).strip()
 
     def _build_fintech_prompt(self, profile: TikTokProfile) -> str:
-        """Construye el prompt estructurado para evaluación de riesgo crediticio."""
+        """Construye el prompt estructurado para evaluación de perfil y riesgo crediticio."""
         intel = profile.intelligence
         pers = profile.personality
 
-        if not intel or not pers:
+        if not intel:
             return ""
 
         viral_info = "Ninguna anomalía detectada (tráfico estable)."
@@ -40,26 +40,42 @@ class AIIntelligenceAnalyst:
             top_viral = intel.viral_outliers[0]
             viral_info = f"Pico viral de {top_viral.views:,} vistas (Z-Score: {top_viral.z_score})"
 
+        if pers:
+            psych_section = (
+                "AUDITORÍA PSICOMÉTRICA BIG FIVE (Voluntad de Pago):\n"
+                f"- Apertura (Openness): {pers.openness * 100:.1f}%\n"
+                f"- Responsabilidad (Conscientiousness): {pers.conscientiousness * 100:.1f}%\n"
+                f"- Extraversión (Extraversion): {pers.extraversion * 100:.1f}%\n"
+                f"- Amabilidad (Agreeableness): {pers.agreeableness * 100:.1f}%\n"
+                f"- Neuroticismo (Inestabilidad): {pers.neuroticism * 100:.1f}%\n\n"
+            )
+        else:
+            psych_section = (
+                "AUDITORÍA PSICOMÉTRICA BIG FIVE:\n"
+                "- Sin texto suficiente en biografía/descripciones para psicometría; "
+                "evalúa principalmente las métricas de tráfico y consistencia.\n\n"
+            )
+
         return (
-            "Emite un dictamen de riesgo crediticio en un solo párrafo basado en los siguientes "
-            "datos del creador de contenido solicitante:\n\n"
-            "AUDITORÍA DE TRÁFICO (Ingresos):\n"
+            f"Emite un dictamen ejecutivo y de riesgo crediticio en un párrafo completo para el perfil @{profile.username} "
+            "basado en los siguientes datos:\n\n"
+            "AUDITORÍA DE TRÁFICO E IMPACTO (Ingresos):\n"
+            f"- Seguidores: {profile.followers_count or 0:,}\n"
+            f"- Videos analizados: {len(profile.recent_videos)}\n"
+            f"- Engagement Rate Promedio: {intel.average_engagement_rate:.2f}%\n"
             f"- Engagement Rate Ponderado: {intel.weighted_engagement_rate:.2f}%\n"
             f"- Conversión Seguidores a Vistas: {intel.follower_to_view_ratio * 100:.2f}%\n"
             f"- Volatilidad: {viral_info}\n\n"
-            "AUDITORÍA PSICOMÉTRICA BIG FIVE (Voluntad de Pago):\n"
-            f"- Responsabilidad (Conscientiousness): {pers.conscientiousness * 100:.1f}%\n"
-            f"- Neuroticismo (Inestabilidad): {pers.neuroticism * 100:.1f}%\n"
-            f"- Apertura y Extraversión combinada: {(pers.openness + pers.extraversion) * 50:.1f}%\n\n"
-            "Redacta el dictamen en español, de forma técnica, objetiva y directa, y concluye "
-            "indicando el Nivel de Riesgo (Bajo, Medio o Alto)."
+            f"{psych_section}"
+            "Redacta el análisis completo en español, de forma técnica, objetiva y directa, "
+            "sin cortar las ideas, y concluye indicando claramente el Nivel de Riesgo (Bajo, Medio o Alto)."
         )
 
     def generate_summary(self, profile: TikTokProfile) -> str:
-        """Ejecuta la inferencia con Gemini y devuelve el dictamen de crédito."""
+        """Ejecuta la inferencia con Gemini y devuelve el dictamen completo."""
         prompt = self._build_fintech_prompt(profile)
         if not prompt:
-            return "Datos insuficientes (faltan métricas o análisis psicométrico) para generar el dictamen de riesgo."
+            return "Datos insuficientes para generar el dictamen de inteligencia con IA."
 
         if not self.api_key or self.api_key.startswith("Tu_clave"):
             return "Configura GEMINI_API_KEY en el archivo .env para generar el dictamen con IA."
@@ -73,10 +89,10 @@ class AIIntelligenceAnalyst:
                 "parts": [
                     {
                         "text": (
-                            "Eres el Arquitecto de Riesgos de una FinTech. Tu tarea es evaluar la viabilidad "
-                            "de otorgar un microcrédito a un creador de contenido basándote en su huella digital. "
-                            "Analizas dos pilares: 1) Estabilidad de ingresos (métricas de tráfico) y "
-                            "2) Voluntad de pago (psicometría Big Five)."
+                            "Eres el Arquitecto de Riesgos e Inteligencia de Datos de una FinTech. "
+                            "Tu tarea es evaluar la huella digital de un creador de contenido en TikTok "
+                            "combinando sus métricas de rendimiento (estabilidad de audiencia y engagement) "
+                            "con su perfil psicométrico Big Five."
                         )
                     }
                 ]
@@ -89,7 +105,7 @@ class AIIntelligenceAnalyst:
             ],
             "generationConfig": {
                 "temperature": 0.4,
-                "maxOutputTokens": 350,
+                "thinkingConfig": {"thinkingBudget": 0},
             },
         }
 
@@ -112,8 +128,13 @@ class AIIntelligenceAnalyst:
                     candidates = data.get("candidates") or []
                     if candidates:
                         parts = candidates[0].get("content", {}).get("parts") or []
-                        if parts and "text" in parts[0]:
-                            return str(parts[0]["text"]).strip()
+                        text_parts = [
+                            str(p["text"]).strip()
+                            for p in parts
+                            if isinstance(p, dict) and "text" in p and not p.get("thought")
+                        ]
+                        if text_parts:
+                            return "\n\n".join(t for t in text_parts if t)
             except Exception as exc:
                 logger.error("Fallo en la generación de resumen con Gemini (%s): %s", model, exc)
 

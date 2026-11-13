@@ -15,7 +15,7 @@ GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta/models"
 
 
 class MissingGeminiKeyError(TikTokScraperError):
-    """Falta configurar la clave GEMINI_API_KEY para el análisis con Gemini."""
+    """Falta configurar la clave GEMINI_API_KEY en el archivo .env."""
 
 
 class BigFiveAnalyzer:
@@ -37,8 +37,7 @@ class BigFiveAnalyzer:
 
         if not self.api_key or self.api_key.startswith("Tu_clave"):
             raise MissingGeminiKeyError(
-                "No se encontró una GEMINI_API_KEY válida. Configúrala en el archivo .env "
-                "(GEMINI_API_KEY=\"tu_api_key\") o ingrésala en la barra lateral del dashboard."
+                "No se encontró una GEMINI_API_KEY válida en el archivo .env."
             )
 
     @staticmethod
@@ -95,6 +94,7 @@ class BigFiveAnalyzer:
             ],
             "generationConfig": {
                 "temperature": 0.2,
+                "thinkingConfig": {"thinkingBudget": 0},
                 "responseMimeType": "application/json",
                 "responseSchema": {
                     "type": "OBJECT",
@@ -141,10 +141,11 @@ class BigFiveAnalyzer:
                 if not candidates:
                     return None
                 parts = candidates[0].get("content", {}).get("parts") or []
-                if not parts or "text" not in parts[0]:
+                text_parts = [p["text"] for p in parts if isinstance(p, dict) and "text" in p and not p.get("thought")]
+                if not text_parts:
                     return None
 
-                raw_scores = json.loads(parts[0]["text"])
+                raw_scores = json.loads(text_parts[-1])
                 return BigFiveScores(
                     openness=max(float(raw_scores.get("openness", 0.2)), 0.001),
                     conscientiousness=max(float(raw_scores.get("conscientiousness", 0.2)), 0.001),
@@ -162,7 +163,7 @@ class BigFiveAnalyzer:
 
     def analyze_text(self, text: str) -> Optional[BigFiveScores]:
         cleaned = self.clean_tiktok_text(text)
-        if len(cleaned.split()) < 2:
+        if not cleaned:
             return None
 
         prompt = f"Analiza el siguiente texto de TikTok y estima sus puntuaciones Big Five (OCEAN):\n\n{cleaned}"
@@ -173,16 +174,15 @@ class BigFiveAnalyzer:
         biography: Optional[str],
         videos: List[VideoMetrics],
     ) -> Optional[BigFiveScores]:
-        clean_bio = self.clean_tiktok_text(biography)
+        clean_bio = self.clean_tiktok_text(biography) or (biography or "").strip()
         video_lines: List[str] = []
 
         for idx, vid in enumerate(videos[:15], start=1):
-            clean_desc = self.clean_tiktok_text(vid.description)
+            clean_desc = self.clean_tiktok_text(vid.description) or (vid.description or "").strip()
             if clean_desc:
                 video_lines.append(f"{idx}. {clean_desc}")
 
-        total_words = len(clean_bio.split()) + sum(len(line.split()) - 1 for line in video_lines)
-        if total_words < 2:
+        if not clean_bio and not video_lines:
             return None
 
         sections = []
