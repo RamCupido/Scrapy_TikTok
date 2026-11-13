@@ -73,6 +73,7 @@ class ProfileIntelligence:
     weighted_engagement_rate: float = 0.0
     viral_outliers: List[VideoOutlier] = field(default_factory=list)
     hashtag_performance: Dict[str, int] = field(default_factory=dict)
+    ai_summary: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -81,6 +82,7 @@ class ProfileIntelligence:
             "weighted_engagement_rate_pct": round(self.weighted_engagement_rate, 2),
             "viral_outliers": [asdict(outlier) for outlier in self.viral_outliers],
             "hashtag_performance": self.hashtag_performance,
+            "ai_summary": self.ai_summary,
         }
     
 @dataclass

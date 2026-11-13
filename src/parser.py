@@ -36,23 +36,47 @@ class TikTokHTMLParser:
     def parse(self) -> TikTokProfile:
         self.checkAccessRestrictions()
 
-        profile = self.parse_from_rehydration_json() or self._parse_from_dom()
+        profile = self.parse_from_rehydration_json() or self.parseFromDOM()
         if not profile:
             raise ProfileNotFoundError(
                 f"No se encontró información pública para '@{self.requested_username}'."
             )
 
-        # 1. Intentar con paquetes JSON interceptados de la red (/api/post/item_list/)
+        if profile.is_private:
+            return profile
+
+        # 1. Extraer videos desde paquetes JSON interceptados de la red (/api/post/item_list/)
         xhr_videos = self.parseInterceptedVideos(profile.username)
-        if xhr_videos:
+        # 2. Extraer videos presentes en la cuadrícula del DOM
+        dom_videos = self.extractVideosFromDOM(profile.username)
+
+        if xhr_videos and dom_videos:
+            xhr_by_id = {v.video_id: v for v in xhr_videos if v.video_id}
+            merged_videos: List[VideoMetrics] = []
+            seen_ids = set()
+
+            # Respetar primero el orden de la cuadrícula visual del perfil
+            for dom_vid in dom_videos:
+                vid_id = dom_vid.video_id
+                if not vid_id or vid_id in seen_ids:
+                    continue
+                seen_ids.add(vid_id)
+                merged_videos.append(xhr_by_id.get(vid_id, dom_vid))
+
+            # Agregar cualquier otro video adicional capturado por XHR
+            for xhr_vid in xhr_videos:
+                if xhr_vid.video_id and xhr_vid.video_id not in seen_ids:
+                    seen_ids.add(xhr_vid.video_id)
+                    merged_videos.append(xhr_vid)
+
+            profile.recent_videos = merged_videos
+            profile.extraction_method += " + XHR_ITEM_LIST + DOM_VIDEO_GRID"
+        elif xhr_videos:
             profile.recent_videos = xhr_videos
             profile.extraction_method += " + XHR_ITEM_LIST"
-        elif not profile.recent_videos and not profile.is_private:
-            # 2. Respaldo desde el DOM de la cuadrícula
-            dom_videos = self._extract_videos_from_dom(profile.username)
-            if dom_videos:
-                profile.recent_videos = dom_videos
-                profile.extraction_method += " + DOM_VIDEO_GRID"
+        elif dom_videos:
+            profile.recent_videos = dom_videos
+            profile.extraction_method += " + DOM_VIDEO_GRID"
 
         return profile
 
@@ -92,8 +116,13 @@ class TikTokHTMLParser:
         raw_likes = stats_v2.get("heartCount") or stats_v2.get("heart") or stats_data.get("heart") or stats_data.get("heartCount")
         raw_videos = stats_v2.get("videoCount") or stats_data.get("videoCount")
 
+        resolved_username = user_data.get("uniqueId", self.requested_username)
+        embedded_items = user_detail.get("itemList")
+        if isinstance(embedded_items, list) and embedded_items:
+            self.intercepted_payloads.insert(0, {"itemList": embedded_items})
+
         return TikTokProfile(
-            username=user_data.get("uniqueId", self.requested_username),
+            username=resolved_username,
             display_name=user_data.get("nickname") or None,
             biography=user_data.get("signature") or None,
             followers_count=fixIntOverflow(raw_followers),
@@ -109,6 +138,7 @@ class TikTokHTMLParser:
 
     def parseInterceptedVideos(self, username: str) -> List[VideoMetrics]:
         videos_by_id: Dict[str, VideoMetrics] = {}
+        expected_user = username.lower().strip()
 
         for payload in self.intercepted_payloads:
             item_list = payload.get("itemList", [])
@@ -120,6 +150,17 @@ class TikTokHTMLParser:
                     continue
                 vid_id = str(item.get("id", ""))
                 if not vid_id or vid_id in videos_by_id:
+                    continue
+
+                # Validar que el autor del video corresponda al perfil buscado
+                author_info = item.get("author")
+                author_username = None
+                if isinstance(author_info, dict):
+                    author_username = author_info.get("uniqueId")
+                elif isinstance(author_info, str):
+                    author_username = author_info
+
+                if author_username and author_username.lower().strip() != expected_user:
                     continue
 
                 stats = item.get("statsV2") or item.get("stats", {})
@@ -189,35 +230,59 @@ class TikTokHTMLParser:
     def parseSingleVideoHtml(html_content: str, fallback_video: VideoMetrics) -> VideoMetrics:
         soup = BeautifulSoup(html_content, "html.parser")
         script_tag = soup.find("script", id="__UNIVERSAL_DATA_FOR_REHYDRATION__")
-        if not script_tag or not script_tag.string:
-            return fallback_video
+        if script_tag and script_tag.string:
+            try:
+                data = json.loads(script_tag.string)
+                video_detail = data.get("__DEFAULT_SCOPE__", {}).get("webapp.video-detail", {})
+                item_struct = video_detail.get("itemInfo", {}).get("itemStruct", {})
+                if item_struct:
+                    stats = item_struct.get("statsV2") or item_struct.get("stats", {})
+                    create_time = item_struct.get("createTime")
+                    created_iso = fallback_video.created_at
+                    if create_time and str(create_time).isdigit():
+                        created_iso = datetime.fromtimestamp(int(create_time), tz=timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
-        try:
-            data = json.loads(script_tag.string)
-            video_detail = data.get("__DEFAULT_SCOPE__", {}).get("webapp.video-detail", {})
-            item_struct = video_detail.get("itemInfo", {}).get("itemStruct", {})
-            if not item_struct:
-                return fallback_video
+                    return VideoMetrics(
+                        video_id=str(item_struct.get("id") or fallback_video.video_id),
+                        url=fallback_video.url,
+                        description=item_struct.get("desc") or fallback_video.description,
+                        created_at=created_iso,
+                        views=fixIntOverflow(stats.get("playCount")) or fallback_video.views,
+                        likes=fixIntOverflow(stats.get("diggCount")),
+                        comments=fixIntOverflow(stats.get("commentCount")),
+                        shares=fixIntOverflow(stats.get("shareCount")),
+                        saves=fixIntOverflow(stats.get("collectCount")),
+                    )
+            except Exception:
+                pass
 
-            stats = item_struct.get("statsV2") or item_struct.get("stats", {})
-            create_time = item_struct.get("createTime")
-            created_iso = fallback_video.created_at
-            if create_time and str(create_time).isdigit():
-                created_iso = datetime.fromtimestamp(int(create_time), tz=timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+        # Respaldo desde el DOM de la página individual del video
+        def _dom_metric(*e2e_names: str) -> Optional[int]:
+            for name in e2e_names:
+                node = soup.find(attrs={"data-e2e": name})
+                if node:
+                    parsed = parseMetricString(node.get_text(strip=True))
+                    if parsed is not None:
+                        return parsed
+            return None
 
-            return VideoMetrics(
-                video_id=str(item_struct.get("id") or fallback_video.video_id),
-                url=fallback_video.url,
-                description=item_struct.get("desc") or fallback_video.description,
-                created_at=created_iso,
-                views=fixIntOverflow(stats.get("playCount")) or fallback_video.views,
-                likes=fixIntOverflow(stats.get("diggCount")),
-                comments=fixIntOverflow(stats.get("commentCount")),
-                shares=fixIntOverflow(stats.get("shareCount")),
-                saves=fixIntOverflow(stats.get("collectCount")),
-            )
-        except Exception:
-            return fallback_video
+        desc_node = (
+            soup.find(attrs={"data-e2e": "browse-video-desc"})
+            or soup.find(attrs={"data-e2e": "video-desc"})
+        )
+        dom_desc = desc_node.get_text(" ", strip=True) if desc_node else None
+
+        return VideoMetrics(
+            video_id=fallback_video.video_id,
+            url=fallback_video.url,
+            description=dom_desc or fallback_video.description,
+            created_at=fallback_video.created_at,
+            views=fallback_video.views,
+            likes=_dom_metric("like-count", "browse-like-count") or fallback_video.likes,
+            comments=_dom_metric("comment-count", "browse-comment-count") or fallback_video.comments,
+            shares=_dom_metric("share-count") or fallback_video.shares,
+            saves=_dom_metric("undefined-count", "fav-count") or fallback_video.saves,
+        )
 
     def parseFromDOM(self) -> Optional[TikTokProfile]:
         title_node = self.soup.find(attrs={"data-e2e": "user-title"})
