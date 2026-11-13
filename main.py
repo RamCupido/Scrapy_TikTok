@@ -155,13 +155,10 @@ def runProfileAnalysis(
         analyzer = DataIntelligenceAnalyzer(profile)
         profile.intelligence = analyzer.generate_intelligence()
 
-        if profile.personality:
-            report_progress("Generando dictamen crediticio FinTech con Gemini...")
-            from src.ai_summary import AIIntelligenceAnalyst
-            ai_analyst = AIIntelligenceAnalyst()
-            profile.intelligence.ai_summary = ai_analyst.generate_summary(profile)
-        else:
-            profile.intelligence.ai_summary = "Requiere ejecutar el análisis de personalidad previamente."
+        report_progress("Generando dictamen crediticio FinTech con Gemini...")
+        from src.ai_summary import AIIntelligenceAnalyst
+        ai_analyst = AIIntelligenceAnalyst()
+        profile.intelligence.ai_summary = ai_analyst.generate_summary(profile)
 
     report_progress("Guardando resultados en el historial...")
     json_path = appendProfileToJson(profile)

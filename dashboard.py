@@ -1,13 +1,10 @@
 import json
-import os
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 import streamlit as st
-from dotenv import load_dotenv, set_key
 
-from src.config import ENV_PATH
 from src.exceptions import (
     AccessControlTriggeredError,
     NetworkOrNavigationError,
@@ -95,6 +92,13 @@ def render_profile_overview(profile: dict[str, Any]) -> None:
     details[2].write(f"**Cuenta privada:** {format_number(profile.get('is_private'))}")
     st.write(f"**Método de extracción:** {profile.get('extraction_method') or 'No disponible'}")
 
+    intelligence = profile.get("intelligence")
+    if isinstance(intelligence, dict):
+        ai_summary = intelligence.get("ai_summary")
+        if isinstance(ai_summary, str) and ai_summary.strip():
+            st.markdown("#### Dictamen FinTech con IA (Google Gemini)")
+            st.info(ai_summary)
+
 
 def render_videos(profile: dict[str, Any]) -> None:
     videos = profile.get("recent_videos") or []
@@ -163,11 +167,11 @@ def render_videos(profile: dict[str, Any]) -> None:
 
 def render_personality(profile: dict[str, Any]) -> None:
     personality = profile.get("personality")
-    st.subheader("Análisis de personalidad · Big Five")
+    st.subheader("Análisis de personalidad · Big Five (Gemini IA)")
     st.info(
-        "Estimación automatizada basada únicamente en la biografía y las descripciones "
-        "públicas recopiladas. Es orientativa: no es una evaluación psicológica ni un "
-        "diagnóstico."
+        "Estimación psicométrica generada con Google Gemini a partir de la biografía y las "
+        "descripciones públicas recopiladas. Es orientativa: no es una evaluación psicológica "
+        "ni un diagnóstico."
     )
     if not isinstance(personality, dict):
         st.warning(
@@ -199,13 +203,20 @@ def render_personality(profile: dict[str, Any]) -> None:
 
 def render_intelligence(profile: dict[str, Any]) -> None:
     intelligence = profile.get("intelligence")
-    st.subheader("Análisis de métricas")
+    st.subheader("Análisis de métricas e IA (Gemini)")
     if not isinstance(intelligence, dict):
         st.warning(
             "Esta extracción no contiene un análisis de métricas. "
             "Genera otra con la opción `--analytics`."
         )
         return
+
+    ai_summary = intelligence.get("ai_summary")
+    st.markdown("#### Dictamen FinTech con IA (Google Gemini)")
+    if isinstance(ai_summary, str) and ai_summary.strip():
+        st.info(ai_summary)
+    else:
+        st.caption("No hay dictamen de IA registrado para esta extracción.")
 
     follower_ratio = intelligence.get("follower_to_view_ratio")
     columns = st.columns(3)
@@ -261,11 +272,6 @@ def render_intelligence(profile: dict[str, Any]) -> None:
     else:
         st.caption("No se detectaron anomalías virales en la muestra.")
 
-    ai_summary = intelligence.get("ai_summary")
-    if isinstance(ai_summary, str) and ai_summary.strip():
-        st.markdown("#### Dictamen FinTech (IA)")
-        st.info(ai_summary)
-
 def main() -> None:
     st.set_page_config(page_title="TikTok Profile Insights", page_icon="📊", layout="wide")
     st.title("TikTok Profile Insights")
@@ -307,22 +313,6 @@ def main() -> None:
                 st.error(str(error))
 
     st.sidebar.header("Nueva extracción")
-    load_dotenv(dotenv_path=ENV_PATH, override=True)
-    current_gemini_key = (os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY") or "").strip()
-    with st.sidebar.expander("Clave de Gemini API", expanded=not bool(current_gemini_key)):
-        new_gemini_key = st.text_input(
-            "GEMINI_API_KEY",
-            value=current_gemini_key,
-            type="password",
-            placeholder="AIzaSy...",
-            help="Necesaria para el análisis Big Five y el dictamen FinTech con Google Gemini.",
-        )
-        if st.button("Guardar clave Gemini", width="stretch"):
-            set_key(str(ENV_PATH), "GEMINI_API_KEY", new_gemini_key.strip())
-            os.environ["GEMINI_API_KEY"] = new_gemini_key.strip()
-            st.success("GEMINI_API_KEY guardada en .env")
-            st.rerun()
-
     with st.sidebar.form("profile_analysis_form"):
         raw_username = st.text_input("Usuario de TikTok", placeholder="@usuario")
         analyze_personality = st.checkbox("Incluir análisis de personalidad (Gemini)", value=True)
@@ -402,7 +392,7 @@ def main() -> None:
     st.caption(f"Extracción: {format_date(profile.get('extracted_at'))}")
 
     overview_tab, videos_tab, personality_tab, intelligence_tab, raw_tab = st.tabs(
-        ["Resumen", "Publicaciones", "Personalidad", "Métricas", "Datos completos"]
+        ["Resumen", "Publicaciones", "Personalidad", "Métricas e IA", "Datos completos"]
     )
     with overview_tab:
         render_profile_overview(profile)
