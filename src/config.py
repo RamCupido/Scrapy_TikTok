@@ -1,4 +1,9 @@
 import os
+from pathlib import Path
+from dotenv import load_dotenv
+
+ENV_PATH = Path(__file__).resolve().parent.parent / ".env"
+load_dotenv(dotenv_path=ENV_PATH, override=True)
 
 DEFAULT_TIMEOUT_MS = int(os.getenv("SCRAPER_TIMEOUT_MS", "25000"))
 RENDER_WAIT_MS = int(os.getenv("SCRAPER_RENDER_WAIT_MS", "3500"))
@@ -12,3 +17,6 @@ DEFAULT_USER_AGENT = os.getenv(
 )
 
 TIKTOK_BASE_URL = "https://www.tiktok.com"
+
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY") or ""
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")

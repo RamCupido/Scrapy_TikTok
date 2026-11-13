@@ -1,7 +1,5 @@
 playwright
 beautifulsoup4
-torch
-transformers
-sentencepiece
-accelerate
+requests
+python-dotenv
 streamlit>=1.50
