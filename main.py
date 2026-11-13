@@ -8,6 +8,7 @@ from src.exceptions import (
     AccessControlTriggeredError,
     NetworkOrNavigationError,
     ProfileNotFoundError,
+    TikTokScraperError,
 )
 from src.validators import InvalidUsernameError
 from src.models import BigFiveScores, TikTokProfile
@@ -69,7 +70,7 @@ def render_score_bar(score: float, width: int = 20) -> str:
 
 def print_personality_report(scores: BigFiveScores) -> None:
     print("-" * 65)
-    print(" ANÁLISIS DE PERSONALIDAD BIG FIVE (OCEAN - HUGGING FACE):")
+    print(" ANÁLISIS DE PERSONALIDAD BIG FIVE (OCEAN - GEMINI AI):")
     print("-" * 65)
     print(f"  [O] Apertura (Openness)            : {render_score_bar(scores.openness)}")
     print(f"  [C] Responsabilidad (Conscient.)   : {render_score_bar(scores.conscientiousness)}")
@@ -94,7 +95,6 @@ def print_intelligence_report(intel: Any) -> None:
     else:
         print("      Ninguna anomalía estadística en la muestra reciente.")
 
-    print(f"\n  [3] Top Hashtags por Impacto Promedio (Vistas):")
     print(f"\n  [3] Top Hashtags por Impacto Promedio (Vistas):")
     if intel.hashtag_performance:
         for idx, (tag, avg_v) in enumerate(intel.hashtag_performance.items(), 1):
@@ -142,7 +142,7 @@ def runProfileAnalysis(
     profile = scraper.fetchProfile(raw_username)
 
     if analyze_personality:
-        report_progress("Analizando personalidad con Big Five...")
+        report_progress("Analizando personalidad Big Five con Gemini...")
         from src.personality import BigFiveAnalyzer
         analyzer = BigFiveAnalyzer()
         profile.personality = analyzer.analyze_profile_corpus(
@@ -156,7 +156,7 @@ def runProfileAnalysis(
         profile.intelligence = analyzer.generate_intelligence()
 
         if profile.personality:
-            report_progress("Generando dictamen crediticio FinTech con LLM local...")
+            report_progress("Generando dictamen crediticio FinTech con Gemini...")
             from src.ai_summary import AIIntelligenceAnalyst
             ai_analyst = AIIntelligenceAnalyst()
             profile.intelligence.ai_summary = ai_analyst.generate_summary(profile)
@@ -189,7 +189,7 @@ def buildArgParser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--analyze-personality",
         action="store_true",
-        help="Ejecuta inferencia NLP con Hugging Face sobre la bio y descripciones de videos.",
+        help="Ejecuta inferencia psicométrica Big Five con Google Gemini sobre la bio y descripciones de videos.",
     )
     parser.add_argument(
         "--analytics",
@@ -247,6 +247,7 @@ def main() -> int:
         ProfileNotFoundError,
         AccessControlTriggeredError,
         NetworkOrNavigationError,
+        TikTokScraperError,
     ) as err:
         print(f"\n[ERROR CONTROLADO] {err}", file=sys.stderr)
         return 2

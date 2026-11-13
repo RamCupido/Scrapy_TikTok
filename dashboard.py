@@ -1,14 +1,18 @@
 import json
+import os
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 import streamlit as st
+from dotenv import load_dotenv, set_key
 
+from src.config import ENV_PATH
 from src.exceptions import (
     AccessControlTriggeredError,
     NetworkOrNavigationError,
     ProfileNotFoundError,
+    TikTokScraperError,
 )
 from src.scraper import TikTokProfileScraper
 from src.validators import InvalidUsernameError
@@ -303,9 +307,25 @@ def main() -> None:
                 st.error(str(error))
 
     st.sidebar.header("Nueva extracción")
+    load_dotenv(dotenv_path=ENV_PATH, override=True)
+    current_gemini_key = (os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY") or "").strip()
+    with st.sidebar.expander("Clave de Gemini API", expanded=not bool(current_gemini_key)):
+        new_gemini_key = st.text_input(
+            "GEMINI_API_KEY",
+            value=current_gemini_key,
+            type="password",
+            placeholder="AIzaSy...",
+            help="Necesaria para el análisis Big Five y el dictamen FinTech con Google Gemini.",
+        )
+        if st.button("Guardar clave Gemini", width="stretch"):
+            set_key(str(ENV_PATH), "GEMINI_API_KEY", new_gemini_key.strip())
+            os.environ["GEMINI_API_KEY"] = new_gemini_key.strip()
+            st.success("GEMINI_API_KEY guardada en .env")
+            st.rerun()
+
     with st.sidebar.form("profile_analysis_form"):
         raw_username = st.text_input("Usuario de TikTok", placeholder="@usuario")
-        analyze_personality = st.checkbox("Incluir análisis de personalidad", value=True)
+        analyze_personality = st.checkbox("Incluir análisis de personalidad (Gemini)", value=True)
         analyze_metrics = st.checkbox("Incluir análisis de métricas e IA", value=True)
         headed = st.checkbox("Mostrar navegador durante la extracción", value=False)
         submitted = st.form_submit_button("Extraer y analizar", type="primary")
@@ -337,6 +357,7 @@ def main() -> None:
                     ProfileNotFoundError,
                     AccessControlTriggeredError,
                     NetworkOrNavigationError,
+                    TikTokScraperError,
                 ) as error:
                     status.update(label="No se pudo completar la extracción", state="error")
                     st.error(str(error))
