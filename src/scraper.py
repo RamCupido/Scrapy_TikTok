@@ -200,6 +200,79 @@ class TikTokProfileScraper:
             except Exception:
                 pass
 
+    @staticmethod
+    def _extract_sec_uid_from_html(html_content: str) -> Optional[str]:
+        try:
+            marker = 'id="__UNIVERSAL_DATA_FOR_REHYDRATION__"'
+            idx = html_content.find(marker)
+            if idx == -1:
+                return None
+            start = html_content.find(">", idx)
+            end = html_content.find("</script>", start)
+            if start == -1 or end == -1:
+                return None
+            raw_json = json.loads(html_content[start + 1 : end])
+            user_info = (
+                raw_json.get("__DEFAULT_SCOPE__", {})
+                .get("webapp.user-detail", {})
+                .get("userInfo", {})
+            )
+            sec_uid = user_info.get("user", {}).get("secUid")
+            return str(sec_uid) if sec_uid else None
+        except Exception:
+            return None
+
+    def _fetch_creator_item_list(
+        self, page: Page, html_content: str, count: int = 15
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Respaldo directo al endpoint /api/creator/item_list/ de TikTok cuando /api/post/item_list/
+        devuelve respuesta vacía. Obtiene las publicaciones recientes con todas sus métricas.
+        """
+        sec_uid = self._extract_sec_uid_from_html(html_content)
+        if not sec_uid:
+            return None
+
+        collected_items: List[Dict[str, Any]] = []
+        cursor_ms = int(time.time() * 1000)
+
+        for _ in range(2):
+            if len(collected_items) >= count:
+                break
+            api_url = (
+                f"{TIKTOK_BASE_URL}/api/creator/item_list/"
+                f"?aid=1988&secUid={sec_uid}&count=15&cursor={cursor_ms}&type=1"
+            )
+            try:
+                raw_text = page.evaluate(
+                    """async (url) => {
+                        const r = await fetch(url, { credentials: 'include' });
+                        return await r.text();
+                    }""",
+                    api_url,
+                )
+                if not raw_text:
+                    break
+                data = json.loads(raw_text)
+                items = data.get("itemList")
+                if not isinstance(items, list) or not items:
+                    break
+                collected_items.extend(items)
+                if not data.get("hasMorePrevious"):
+                    break
+                last_create = items[-1].get("createTime")
+                if last_create and str(last_create).isdigit():
+                    cursor_ms = int(last_create) * 1000 - 1000
+                else:
+                    break
+            except Exception as exc:
+                logger.debug("Fallo al consultar /api/creator/item_list: %s", exc)
+                break
+
+        if collected_items:
+            return {"itemList": collected_items}
+        return None
+
     def fetchProfile(self, raw_username: str, save_cookies: bool = True) -> TikTokProfile:
         username = validateAndCleanUsername(raw_username)
         target_url = f"{TIKTOK_BASE_URL}/@{username}"
@@ -207,8 +280,8 @@ class TikTokProfileScraper:
         had_auth_session = self.isSessionAuthenticated()
 
         def _handle_response(response: Response) -> None:
-            """Captura únicamente paquetes JSON de publicaciones del perfil (/api/post/item_list)."""
-            if "/api/post/item_list" in response.url and response.status == 200:
+            """Captura paquetes JSON de publicaciones del perfil (/api/post/item_list o /api/creator/item_list)."""
+            if ("/api/post/item_list" in response.url or "/api/creator/item_list" in response.url) and response.status == 200:
                 try:
                     text_body = response.text()
                     if text_body and "itemList" in text_body:
@@ -253,21 +326,31 @@ class TikTokProfileScraper:
                         raise ProfileNotFoundError(f"El perfil '@{username}' devolvió HTTP 404.")
 
                     # Esperar a que se hidrate la cuadrícula o transcurra el tiempo base
+                    grid_visible = False
                     try:
-                        page.wait_for_selector('[data-e2e="user-post-item"]', timeout=8000)
+                        page.wait_for_selector('[data-e2e="user-post-item"]', timeout=4500)
+                        grid_visible = True
                     except PlaywrightTimeoutError:
-                        page.wait_for_timeout(RENDER_WAIT_MS)
+                        page.wait_for_timeout(1500)
 
                     is_currently_auth = self._context_has_auth_cookies(context)
                     self.dismissLoginModals(page, is_authenticated=is_currently_auth)
 
-                    # Scroll progresivo para activar el IntersectionObserver de la cuadrícula de videos
-                    for _ in range(self.scroll_steps):
-                        page.mouse.wheel(0, 900)
-                        page.wait_for_timeout(1500)
-                        self.dismissLoginModals(page, is_authenticated=is_currently_auth)
+                    # Scroll progresivo solo si la cuadrícula está visible en el DOM
+                    if grid_visible:
+                        for _ in range(self.scroll_steps):
+                            page.mouse.wheel(0, 900)
+                            page.wait_for_timeout(1200)
+                            self.dismissLoginModals(page, is_authenticated=is_currently_auth)
 
                     html_content = page.content()
+
+                    # Si /api/post/item_list devolvió cuerpo vacío (len=0), consultamos /api/creator/item_list
+                    # usando el secUid del perfil desde el propio contexto autenticado del navegador.
+                    if not intercepted_video_payloads:
+                        creator_payload = self._fetch_creator_item_list(page, html_content, count=max(15, self.max_deep_videos))
+                        if creator_payload:
+                            intercepted_video_payloads.append(creator_payload)
 
                     # Parsear el perfil y los videos obtenidos hasta el momento
                     parser = TikTokHTMLParser(
@@ -278,7 +361,7 @@ class TikTokProfileScraper:
                     profile = parser.parse()
 
                     # Si alguno de los primeros N videos no tiene métricas detalladas (likes/comentarios/guardados),
-                    # visitamos individualmente esos videos para enriquecerlos desde su propio SSR JSON o DOM.
+                    # enriquecemos rápidamente desde el SSR JSON de cada video.
                     target_slice = profile.recent_videos[: self.max_deep_videos]
                     if target_slice and any(v.likes is None for v in target_slice):
                         enriched_videos: List[VideoMetrics] = []
@@ -287,12 +370,14 @@ class TikTokProfileScraper:
                                 enriched_videos.append(vid)
                                 continue
                             try:
-                                page.goto(vid.url, wait_until="domcontentloaded", timeout=15000)
-                                page.wait_for_timeout(1200)
-                                vid_html = page.content()
-                                enriched_videos.append(
-                                    TikTokHTMLParser.parseSingleVideoHtml(vid_html, vid)
-                                )
+                                api_resp = context.request.get(vid.url, timeout=12000)
+                                if api_resp.status == 200:
+                                    vid_html = api_resp.text()
+                                    enriched_videos.append(
+                                        TikTokHTMLParser.parseSingleVideoHtml(vid_html, vid)
+                                    )
+                                else:
+                                    enriched_videos.append(vid)
                             except Exception:
                                 enriched_videos.append(vid)
 
