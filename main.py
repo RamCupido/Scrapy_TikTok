@@ -3,7 +3,6 @@ import json
 import sys
 from pathlib import Path
 from typing import Any, Callable
-from src.ai_summary import AIIntelligenceAnalyst
 from src.scraper import TikTokProfileScraper
 from src.exceptions import (
     AccessControlTriggeredError,
@@ -12,7 +11,6 @@ from src.exceptions import (
 )
 from src.validators import InvalidUsernameError
 from src.models import BigFiveScores, TikTokProfile
-from src.personality import BigFiveAnalyzer
 from src.analytics import DataIntelligenceAnalyzer
 
 OUTPUT_FILE = Path(__file__).resolve().with_name("scraped_profiles.json")
@@ -97,11 +95,15 @@ def print_intelligence_report(intel: Any) -> None:
         print("      Ninguna anomalía estadística en la muestra reciente.")
 
     print(f"\n  [3] Top Hashtags por Impacto Promedio (Vistas):")
+    print(f"\n  [3] Top Hashtags por Impacto Promedio (Vistas):")
     if intel.hashtag_performance:
         for idx, (tag, avg_v) in enumerate(intel.hashtag_performance.items(), 1):
             print(f"      {idx}. #{tag.ljust(15)} : {avg_v:,} vistas prom.")
     else:
         print("      No se detectaron hashtags suficientes en la muestra.")
+
+    if getattr(intel, "ai_summary", None):
+        print(f"\n  [4] Dictamen Crediticio FinTech (IA):\n      {intel.ai_summary}")
         
     print("-" * 65)
 
@@ -131,12 +133,17 @@ def runProfileAnalysis(
         if progress_callback:
             progress_callback(message)
 
-    report_progress("Extrayendo datos públicos del perfil...")
     scraper = TikTokProfileScraper(headless=not headed)
+    if scraper.isSessionAuthenticated():
+        report_progress("Extrayendo datos del perfil con sesión autenticada...")
+    else:
+        report_progress("Extrayendo datos públicos del perfil (modo invitado)...")
+
     profile = scraper.fetchProfile(raw_username)
 
     if analyze_personality:
         report_progress("Analizando personalidad con Big Five...")
+        from src.personality import BigFiveAnalyzer
         analyzer = BigFiveAnalyzer()
         profile.personality = analyzer.analyze_profile_corpus(
             biography=profile.biography,
@@ -147,6 +154,14 @@ def runProfileAnalysis(
         report_progress("Calculando métricas de engagement y rendimiento...")
         analyzer = DataIntelligenceAnalyzer(profile)
         profile.intelligence = analyzer.generate_intelligence()
+
+        if profile.personality:
+            report_progress("Generando dictamen crediticio FinTech con LLM local...")
+            from src.ai_summary import AIIntelligenceAnalyst
+            ai_analyst = AIIntelligenceAnalyst()
+            profile.intelligence.ai_summary = ai_analyst.generate_summary(profile)
+        else:
+            profile.intelligence.ai_summary = "Requiere ejecutar el análisis de personalidad previamente."
 
     report_progress("Guardando resultados en el historial...")
     json_path = appendProfileToJson(profile)
@@ -160,6 +175,11 @@ def buildArgParser() -> argparse.ArgumentParser:
         "-u", "--username",
         type=str,
         help="Nombre de usuario de TikTok (ej. tiktok o @tiktok). Si se omite, se solicitará por consola.",
+    )
+    parser.add_argument(
+        "--login",
+        action="store_true",
+        help="Abre una ventana visible para iniciar sesión en TikTok y guardar las cookies autenticadas.",
     )
     parser.add_argument(
         "--headed",
@@ -182,17 +202,26 @@ def main() -> int:
     parser = buildArgParser()
     args = parser.parse_args()
 
-    raw_username = args.username
-    if not raw_username:
-        try:
-            raw_username = input("Introduce el username del perfil de TikTok (ej. @tiktok): ").strip()
-        except (KeyboardInterrupt, EOFError):
-            print("\nOperación cancelada por el usuario.")
-            return 1
+    def print_progress(message: str) -> None:
+        print(f"[*] {message}")
 
     try:
-        def print_progress(message: str) -> None:
-            print(f"[*] {message}")
+        if args.login:
+            scraper = TikTokProfileScraper(headless=False)
+            logged_in = scraper.loginInteractive(progress_callback=print_progress)
+            if not logged_in:
+                print("[!] No se completó el inicio de sesión.", file=sys.stderr)
+                return 1
+            if not args.username:
+                return 0
+
+        raw_username = args.username
+        if not raw_username:
+            try:
+                raw_username = input("Introduce el username del perfil de TikTok (ej. @tiktok): ").strip()
+            except (KeyboardInterrupt, EOFError):
+                print("\nOperación cancelada por el usuario.")
+                return 1
 
         profile, json_path = runProfileAnalysis(
             raw_username,
@@ -207,20 +236,8 @@ def main() -> int:
                 print_personality_report(profile.personality)
             else:
                 print("[!] Texto insuficiente en bio y videos para inferir rasgos de personalidad.")
-        if args.analytics:
-            print("[*] Procesando auditoría estadística e inteligencia de datos...")
-            analyzer = DataIntelligenceAnalyzer(profile)
-            profile.intelligence = analyzer.generate_intelligence()
-        
-            if profile.personality:
-                print("[*] Generando dictamen crediticio FinTech con LLM local...")
-                ai_analyst = AIIntelligenceAnalyst()
-                # Pasamos el profile completo para que el LLM lea inteligencia y personalidad
-                profile.intelligence.ai_summary = ai_analyst.generate_summary(profile)
-            else:
-                profile.intelligence.ai_summary = "Requiere ejecutar el flag --analyze-personality previamente."
-            
-        print_intelligence_report(profile.intelligence)
+        if args.analytics and profile.intelligence:
+            print_intelligence_report(profile.intelligence)
         print(f"[+] Datos añadidos al historial JSON: {json_path}")
 
         return 0

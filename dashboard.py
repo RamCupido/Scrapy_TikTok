@@ -10,6 +10,7 @@ from src.exceptions import (
     NetworkOrNavigationError,
     ProfileNotFoundError,
 )
+from src.scraper import TikTokProfileScraper
 from src.validators import InvalidUsernameError
 
 
@@ -256,10 +257,50 @@ def render_intelligence(profile: dict[str, Any]) -> None:
     else:
         st.caption("No se detectaron anomalías virales en la muestra.")
 
+    ai_summary = intelligence.get("ai_summary")
+    if isinstance(ai_summary, str) and ai_summary.strip():
+        st.markdown("#### Dictamen FinTech (IA)")
+        st.info(ai_summary)
+
 def main() -> None:
     st.set_page_config(page_title="TikTok Profile Insights", page_icon="📊", layout="wide")
     st.title("TikTok Profile Insights")
     st.caption("Extrae un perfil público y consulta sus métricas y análisis desde esta interfaz.")
+
+    st.sidebar.header("Sesión de TikTok")
+    session_status = TikTokProfileScraper.getSessionStatus()
+    if session_status["authenticated"]:
+        st.sidebar.success(
+            f"Sesión autenticada activa ({', '.join(session_status['auth_cookies'])})"
+        )
+    elif session_status["file_exists"]:
+        st.sidebar.warning("Modo invitado (sin cuenta iniciada)")
+    else:
+        st.sidebar.info("Sin archivo de sesión guardado")
+
+    if st.sidebar.button("Iniciar / Renovar sesión en TikTok", width="stretch"):
+        with st.status("Iniciando sesión en TikTok...", expanded=True) as login_status:
+            try:
+                scraper = TikTokProfileScraper(headless=False)
+                logged_in = scraper.loginInteractive(
+                    progress_callback=lambda msg: login_status.update(
+                        label=msg, state="running", expanded=True
+                    )
+                )
+                if logged_in:
+                    login_status.update(
+                        label="Sesión autenticada guardada en session_state.json",
+                        state="complete",
+                    )
+                    st.rerun()
+                else:
+                    login_status.update(
+                        label="No se completó el inicio de sesión",
+                        state="error",
+                    )
+            except Exception as error:
+                login_status.update(label="Error al iniciar sesión", state="error")
+                st.error(str(error))
 
     st.sidebar.header("Nueva extracción")
     with st.sidebar.form("profile_analysis_form"):
