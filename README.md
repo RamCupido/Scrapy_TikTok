@@ -87,6 +87,16 @@ La extracción también puede seguir ejecutándose desde la consola, si lo prefi
 python main.py --username USUARIO --analyze-personality --analytics
 ```
 
+## Inicio de sesión y cookies autenticadas (Recomendado)
+
+Para evitar bloqueos de invitado, CAPTCHAs frecuentes y obtener de forma confiable las métricas completas de los primeros 15+ videos, puedes iniciar sesión una vez y guardar las cookies autenticadas en `session_state.json`:
+
+```bash
+python main.py --login
+```
+
+Esto abrirá una ventana de Chromium en `https://www.tiktok.com/login`. Una vez que inicies sesión (por código QR, usuario/contraseña, etc.), el programa detectará automáticamente las cookies de autenticación (`sessionid`, `sid_tt`, etc.), guardará el estado en `session_state.json` y lo reutilizará en todas las extracciones posteriores. También puedes iniciar o renovar la sesión desde el botón **"Iniciar / Renovar sesión en TikTok"** en la barra lateral de `dashboard.py`.
+
 ## Uso
 
 Desde la carpeta del proyecto, ejecuta el comando principal:
