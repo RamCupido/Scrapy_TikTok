@@ -18,11 +18,11 @@ from src.validators import InvalidUsernameError
 OUTPUT_FILE = Path(__file__).resolve().with_name("scraped_profiles.json")
 
 PERSONALITY_TRAITS = {
-    "openness": "Apertura",
-    "conscientiousness": "Responsabilidad",
-    "extraversion": "Extraversión",
-    "agreeableness": "Amabilidad",
-    "neuroticism": "Neuroticismo",
+    "openness": "Apertura (Creatividad y curiosidad)",
+    "conscientiousness": "Responsabilidad (Orden y constancia)",
+    "extraversion": "Extraversión (Sociabilidad y energía)",
+    "agreeableness": "Amabilidad (Empatía y cercanía)",
+    "neuroticism": "Sensibilidad emocional (Reactividad)",
 }
 
 
@@ -34,7 +34,7 @@ def load_profiles() -> list[dict[str, Any]]:
         profiles = json.load(file)
 
     if not isinstance(profiles, list):
-        raise ValueError("El historial JSON debe contener una lista de perfiles.")
+        raise ValueError("El historial debe contener una lista de perfiles.")
     if not all(isinstance(profile, dict) for profile in profiles):
         raise ValueError("El historial contiene registros que no son perfiles válidos.")
 
@@ -80,8 +80,8 @@ def render_profile_overview(profile: dict[str, Any]) -> None:
     metrics = [
         ("Seguidores", profile.get("followers_count")),
         ("Seguidos", profile.get("following_count")),
-        ("Likes acumulados", profile.get("total_likes_count")),
-        ("Publicaciones totales", profile.get("videos_count")),
+        ("Likes totales", profile.get("total_likes_count")),
+        ("Videos publicados", profile.get("videos_count")),
     ]
     for column, (label, value) in zip(columns, metrics):
         column.metric(label, format_number(value))
@@ -90,21 +90,20 @@ def render_profile_overview(profile: dict[str, Any]) -> None:
     details[0].write(f"**Nombre visible:** {profile.get('display_name') or 'No disponible'}")
     details[1].write(f"**Cuenta verificada:** {format_number(profile.get('is_verified'))}")
     details[2].write(f"**Cuenta privada:** {format_number(profile.get('is_private'))}")
-    st.write(f"**Método de extracción:** {profile.get('extraction_method') or 'No disponible'}")
 
     intelligence = profile.get("intelligence")
     if isinstance(intelligence, dict):
         ai_summary = intelligence.get("ai_summary")
         if isinstance(ai_summary, str) and ai_summary.strip():
-            st.markdown("#### Dictamen FinTech con IA (Google Gemini)")
+            st.markdown("#### Evaluación general con IA")
             st.info(ai_summary)
 
 
 def render_videos(profile: dict[str, Any]) -> None:
     videos = profile.get("recent_videos") or []
-    st.subheader(f"Publicaciones recopiladas ({len(videos)})")
+    st.subheader(f"Videos recientes analizados ({len(videos)})")
     if not videos:
-        st.info("No se recopilaron publicaciones en esta extracción.")
+        st.info("No se encontraron videos públicos en esta extracción.")
         return
 
     rows = []
@@ -112,15 +111,14 @@ def render_videos(profile: dict[str, Any]) -> None:
         rows.append(
             {
                 "N.º": index,
-                "ID": video.get("video_id"),
-                "Fecha": video.get("created_at"),
+                "Descripción": video.get("description") or "Sin descripción",
+                "Fecha": video.get("created_at") or "No disponible",
                 "Vistas": video.get("views"),
                 "Likes": video.get("likes"),
                 "Comentarios": video.get("comments"),
                 "Compartidos": video.get("shares"),
                 "Guardados": video.get("saves"),
-                "Descripción": video.get("description"),
-                "URL": video.get("url"),
+                "Enlace": video.get("url"),
             }
         )
 
@@ -132,13 +130,13 @@ def render_videos(profile: dict[str, Any]) -> None:
         if numeric(video.get("views"))
     ]
     if view_rows:
-        st.markdown("#### Visualizaciones por publicación")
+        st.markdown("#### Vistas por video")
         st.bar_chart(
             {
-                "Publicación": [label for label, _ in view_rows],
+                "Video": [label for label, _ in view_rows],
                 "Vistas": [value for _, value in view_rows],
             },
-            x="Publicación",
+            x="Video",
             y="Vistas",
         )
 
@@ -152,7 +150,7 @@ def render_videos(profile: dict[str, Any]) -> None:
     if any(numeric(video.get(key)) for video in videos for key in interaction_keys):
         interaction_rows = [
             {
-                "Publicación": f"Video {index}",
+                "Video": f"Video {index}",
                 **{
                     interaction_names[key]: video.get(key)
                     for key in interaction_keys
@@ -161,75 +159,90 @@ def render_videos(profile: dict[str, Any]) -> None:
             }
             for index, video in enumerate(videos, start=1)
         ]
-        st.markdown("#### Interacciones por publicación")
-        st.bar_chart(interaction_rows, x="Publicación")
+        st.markdown("#### Interacciones por video")
+        st.bar_chart(interaction_rows, x="Video")
 
 
 def render_personality(profile: dict[str, Any]) -> None:
     personality = profile.get("personality")
-    st.subheader("Análisis de personalidad · Big Five (Gemini IA)")
+    st.subheader("Estilo de comunicación y personalidad")
     st.info(
-        "Estimación psicométrica generada con Google Gemini a partir de la biografía y las "
-        "descripciones públicas recopiladas. Es orientativa: no es una evaluación psicológica "
-        "ni un diagnóstico."
+        "Análisis generado con Inteligencia Artificial a partir de la biografía y las "
+        "descripciones de los videos del creador. Muestra qué rasgos destacan más en su contenido."
     )
     if not isinstance(personality, dict):
         st.warning(
-            "Esta extracción no contiene un análisis de personalidad. "
-            "Genera otra con la opción `--analyze-personality`."
+            "Este perfil no incluye análisis de personalidad. "
+            "Marca la casilla «Incluir análisis de personalidad» en la barra lateral y vuelve a analizarlo."
         )
         return
 
+    short_labels = {
+        "openness": "Apertura",
+        "conscientiousness": "Responsabilidad",
+        "extraversion": "Extraversión",
+        "agreeableness": "Amabilidad",
+        "neuroticism": "Sensibilidad emocional",
+    }
+
     scores = [
-        (label, personality.get(key))
-        for key, label in PERSONALITY_TRAITS.items()
+        (short_labels[key], PERSONALITY_TRAITS[key], personality.get(key))
+        for key in PERSONALITY_TRAITS
         if numeric(personality.get(key))
     ]
     if not scores:
-        st.warning("No hay puntuaciones Big Five disponibles para esta extracción.")
+        st.warning("No hay puntuaciones de personalidad disponibles para este perfil.")
         return
 
     st.bar_chart(
         {
-            "Rasgo": [label for label, _ in scores],
-            "Puntuación": [value for _, value in scores],
+            "Rasgo": [short_label for short_label, _, _ in scores],
+            "Proporción": [value for _, _, value in scores],
         },
         x="Rasgo",
-        y="Puntuación",
+        y="Proporción",
     )
-    for label, score in scores:
-        st.progress(float(max(0, min(score, 1))), text=f"{label}: {score:.0%}")
+    for _, full_label, score in scores:
+        st.progress(float(max(0, min(score, 1))), text=f"{full_label}: {score:.0%}")
 
 
 def render_intelligence(profile: dict[str, Any]) -> None:
     intelligence = profile.get("intelligence")
-    st.subheader("Análisis de métricas e IA (Gemini)")
+    st.subheader("Rendimiento del contenido y conclusión IA")
     if not isinstance(intelligence, dict):
         st.warning(
-            "Esta extracción no contiene un análisis de métricas. "
-            "Genera otra con la opción `--analytics`."
+            "Este perfil no contiene un análisis de rendimiento. "
+            "Marca la casilla «Incluir análisis de métricas e IA» en la barra lateral y vuelve a analizarlo."
         )
         return
 
     ai_summary = intelligence.get("ai_summary")
-    st.markdown("#### Dictamen FinTech con IA (Google Gemini)")
+    st.markdown("#### Conclusión del análisis con IA")
     if isinstance(ai_summary, str) and ai_summary.strip():
         st.info(ai_summary)
     else:
-        st.caption("No hay dictamen de IA registrado para esta extracción.")
+        st.caption("No hay conclusión de IA registrada para este perfil.")
 
     follower_ratio = intelligence.get("follower_to_view_ratio")
+    avg_er = intelligence.get("average_engagement_rate")
+    weighted_er = intelligence.get("weighted_engagement_rate")
+
     columns = st.columns(3)
     columns[0].metric(
-        "Conversión seguidores → vistas",
-        f"{follower_ratio * 100:.2f}%" if numeric(follower_ratio) else "No disponible",
+        "Alcance frente a seguidores",
+        f"{follower_ratio * 100:.1f}%" if numeric(follower_ratio) else "No disponible",
+        help="Compara el promedio de vistas por video con el total de seguidores de la cuenta.",
     )
-    for column, key, label in (
-        (columns[1], "average_engagement_rate", "Engagement promedio"),
-        (columns[2], "weighted_engagement_rate", "Engagement ponderado"),
-    ):
-        value = intelligence.get(key)
-        column.metric(label, f"{value:.2f}%" if numeric(value) else "No disponible")
+    columns[1].metric(
+        "Interacción promedio",
+        f"{avg_er:.2f}%" if numeric(avg_er) else "No disponible",
+        help="Porcentaje de personas que dan like, comentan, guardan o comparten tras ver un video.",
+    )
+    columns[2].metric(
+        "Interacción de alto impacto",
+        f"{weighted_er:.2f}%" if numeric(weighted_er) else "No disponible",
+        help="Mide la interacción dándole el doble de valor a los videos guardados y compartidos.",
+    )
 
     hashtags = intelligence.get("hashtag_performance")
     if isinstance(hashtags, dict) and hashtags:
@@ -243,7 +256,7 @@ def render_intelligence(profile: dict[str, Any]) -> None:
             reverse=True,
         )
         if hashtag_rows:
-            st.markdown("#### Hashtags con más vistas promedio")
+            st.markdown("#### Hashtags que generan más vistas")
             st.bar_chart(
                 {
                     "Hashtag": [f"#{tag}" for tag, _ in hashtag_rows],
@@ -254,14 +267,13 @@ def render_intelligence(profile: dict[str, Any]) -> None:
             )
 
     outliers = intelligence.get("viral_outliers") or []
-    st.markdown("#### Publicaciones virales atípicas")
+    st.markdown("#### Videos que superaron por mucho el promedio del perfil")
     if outliers:
         st.dataframe(
             [
                 {
-                    "ID del video": item.get("video_id"),
-                    "Vistas": item.get("views"),
-                    "Z-Score": item.get("z_score"),
+                    "Vistas alcanzadas": format_number(item.get("views")),
+                    "Nivel de viralidad": f"{item.get('z_score')}x sobre lo habitual",
                 }
                 for item in outliers
                 if isinstance(item, dict)
@@ -270,26 +282,25 @@ def render_intelligence(profile: dict[str, Any]) -> None:
             hide_index=True,
         )
     else:
-        st.caption("No se detectaron anomalías virales en la muestra.")
+        st.caption("Todos los videos recientes mantienen un nivel de vistas similar (sin picos atípicos).")
+
 
 def main() -> None:
     st.set_page_config(page_title="TikTok Profile Insights", page_icon="📊", layout="wide")
-    st.title("TikTok Profile Insights")
-    st.caption("Extrae un perfil público y consulta sus métricas y análisis desde esta interfaz.")
+    st.title("Análisis de Perfiles de TikTok")
+    st.caption("Consulta de forma sencilla las estadísticas, el impacto de los videos y el perfil de comunicación de cualquier cuenta pública.")
 
-    st.sidebar.header("Sesión de TikTok")
+    st.sidebar.header("Cuenta de TikTok")
     session_status = TikTokProfileScraper.getSessionStatus()
     if session_status["authenticated"]:
-        st.sidebar.success(
-            f"Sesión autenticada activa ({', '.join(session_status['auth_cookies'])})"
-        )
+        st.sidebar.success("Cuenta de TikTok conectada")
     elif session_status["file_exists"]:
-        st.sidebar.warning("Modo invitado (sin cuenta iniciada)")
+        st.sidebar.warning("Modo invitado (sin cuenta conectada)")
     else:
-        st.sidebar.info("Sin archivo de sesión guardado")
+        st.sidebar.info("Sin sesión iniciada")
 
-    if st.sidebar.button("Iniciar / Renovar sesión en TikTok", width="stretch"):
-        with st.status("Iniciando sesión en TikTok...", expanded=True) as login_status:
+    if st.sidebar.button("Conectar / Cambiar cuenta de TikTok", width="stretch"):
+        with st.status("Abriendo ventana de TikTok...", expanded=True) as login_status:
             try:
                 scraper = TikTokProfileScraper(headless=False)
                 logged_in = scraper.loginInteractive(
@@ -299,7 +310,7 @@ def main() -> None:
                 )
                 if logged_in:
                     login_status.update(
-                        label="Sesión autenticada guardada en session_state.json",
+                        label="Cuenta conectada correctamente",
                         state="complete",
                     )
                     st.rerun()
@@ -312,24 +323,24 @@ def main() -> None:
                 login_status.update(label="Error al iniciar sesión", state="error")
                 st.error(str(error))
 
-    st.sidebar.header("Nueva extracción")
+    st.sidebar.header("Analizar un perfil")
     with st.sidebar.form("profile_analysis_form"):
         raw_username = st.text_input("Usuario de TikTok", placeholder="@usuario")
-        analyze_personality = st.checkbox("Incluir análisis de personalidad (Gemini)", value=True)
+        analyze_personality = st.checkbox("Incluir análisis de personalidad", value=True)
         analyze_metrics = st.checkbox("Incluir análisis de métricas e IA", value=True)
-        headed = st.checkbox("Mostrar navegador durante la extracción", value=False)
-        submitted = st.form_submit_button("Extraer y analizar", type="primary")
+        headed = st.checkbox("Mostrar navegador durante la búsqueda", value=False)
+        submitted = st.form_submit_button("Analizar perfil", type="primary")
 
     if submitted:
         if not raw_username.strip():
-            st.sidebar.error("Escribe un nombre de usuario para iniciar.")
+            st.sidebar.error("Escribe un nombre de usuario para comenzar.")
         else:
             succeeded = False
-            with st.status("Preparando extracción...", expanded=True) as status:
+            with st.status("Iniciando análisis...", expanded=True) as status:
                 try:
                     from main import runProfileAnalysis
 
-                    profile, json_path = runProfileAnalysis(
+                    profile, _ = runProfileAnalysis(
                         raw_username,
                         headed=headed,
                         analyze_personality=analyze_personality,
@@ -340,7 +351,7 @@ def main() -> None:
                             expanded=True,
                         ),
                     )
-                    status.update(label="Extracción y análisis completados", state="complete")
+                    status.update(label="Análisis completado", state="complete")
                     succeeded = True
                 except (
                     InvalidUsernameError,
@@ -349,38 +360,38 @@ def main() -> None:
                     NetworkOrNavigationError,
                     TikTokScraperError,
                 ) as error:
-                    status.update(label="No se pudo completar la extracción", state="error")
+                    status.update(label="No se pudo completar el análisis", state="error")
                     st.error(str(error))
                 except Exception as error:
                     status.update(label="Ocurrió un error inesperado", state="error")
                     st.exception(error)
 
             if succeeded:
-                st.success(f"Perfil @{profile.username} guardado en {json_path.name}.")
+                st.success(f"Perfil @{profile.username} analizado correctamente.")
                 st.rerun()
 
     try:
         profiles = load_profiles()
     except (OSError, json.JSONDecodeError, ValueError) as error:
-        st.error(f"No se pudo leer el historial `{OUTPUT_FILE.name}`: {error}")
+        st.error(f"No se pudo leer el historial de perfiles: {error}")
         st.stop()
         return
 
     if not profiles:
         st.info(
-            "Todavía no hay perfiles en el historial. Escribe un usuario en el formulario "
-            "de la barra lateral para iniciar la primera extracción."
+            "Todavía no hay perfiles analizados. Escribe un usuario en la barra lateral "
+            "para realizar tu primera consulta."
         )
         return
 
-    st.sidebar.header("Historial")
-    st.sidebar.caption(f"{len(profiles)} extracciones guardadas")
-    if st.sidebar.button("Actualizar historial"):
+    st.sidebar.header("Perfiles consultados")
+    st.sidebar.caption(f"{len(profiles)} análisis guardados")
+    if st.sidebar.button("Actualizar lista"):
         st.rerun()
 
     profile_indices = list(reversed(range(len(profiles))))
     selected_index = st.sidebar.selectbox(
-        "Selecciona una extracción",
+        "Selecciona un perfil",
         profile_indices,
         format_func=lambda index: profile_label(index, profiles),
     )
@@ -389,17 +400,13 @@ def main() -> None:
     st.header(f"@{username}")
     if profile.get("display_name"):
         st.caption(profile["display_name"])
-    st.caption(f"Extracción: {format_date(profile.get('extracted_at'))}")
+    st.caption(f"Fecha de consulta: {format_date(profile.get('extracted_at'))}")
 
-    overview_tab, videos_tab, personality_tab, intelligence_tab, raw_tab = st.tabs(
-        ["Resumen", "Publicaciones", "Personalidad", "Métricas e IA", "Datos completos"]
+    overview_tab, videos_tab, personality_tab, intelligence_tab = st.tabs(
+        ["Resumen", "Videos", "Personalidad", "Rendimiento e IA"]
     )
     with overview_tab:
         render_profile_overview(profile)
-        if profile.get("notes"):
-            with st.expander("Notas de extracción"):
-                for note in profile["notes"]:
-                    st.write(f"- {note}")
 
     with videos_tab:
         render_videos(profile)
@@ -409,15 +416,6 @@ def main() -> None:
 
     with intelligence_tab:
         render_intelligence(profile)
-
-    with raw_tab:
-        st.json(profile)
-        st.download_button(
-            "Descargar esta extracción como JSON",
-            data=json.dumps(profile, ensure_ascii=False, indent=2),
-            file_name=f"{username}_profile.json",
-            mime="application/json",
-        )
 
 
 if __name__ == "__main__":
