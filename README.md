@@ -146,8 +146,10 @@ Ambos archivos son datos locales generados durante el uso; no se incluyen en el 
 | `SCRAPER_TIMEOUT_MS` | `25000` | Tiempo máximo de navegación, en milisegundos. |
 | `SCRAPER_RENDER_WAIT_MS` | `3500` | Espera adicional para que cargue la página cuando no aparece la cuadrícula de publicaciones. |
 | `SCRAPER_USER_AGENT` | Agente de usuario definido en `src/config.py` | Agente de usuario enviado por el navegador. |
+| `GEMINI_API_KEY` | *(Requerido para IA)* | Clave de API de Google Gemini para análisis Big Five y dictamen FinTech. |
+| `GEMINI_MODEL` | `gemini-2.5-flash` | Modelo de Gemini utilizado para el análisis. |
 
-El archivo `.env.example` muestra los valores de referencia, pero la aplicación no carga archivos `.env` automáticamente; configura las variables en el entorno antes de ejecutar el programa.
+El archivo `.env` se carga automáticamente al iniciar la aplicación (`src/config.py`).
 
 ## Errores y limitaciones
 
